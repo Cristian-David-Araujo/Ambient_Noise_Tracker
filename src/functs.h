@@ -13,12 +13,6 @@
 
 #include <stdint.h>
 
-#include "functs.h"
-#include "gpio_led.h"
-#include "gpio_button.h"
-#include "gps.h"
-#include "microphone.h"
-
 /**
  * @brief This typedef is for generate a word on we have the flags of interrups pending.
  * @typedef flags_t
@@ -73,12 +67,7 @@ void gpioCallback(uint num, uint32_t mask);
  */
 void led_timer_handler(void);
 
-/**
- * @brief Configure the led Alarm
- * 
- * @param led 
- */
-void led_set_alarm(led_rgb_t *led);
+
 
 #endif // __FUNTCS_
 

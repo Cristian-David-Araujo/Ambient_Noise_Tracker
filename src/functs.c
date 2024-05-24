@@ -71,21 +71,6 @@ void led_timer_handler(void)
 }
 
 
-void led_set_alarm(led_rgb_t *led)
-{
-    // Interrupt acknowledge
-    hw_clear_bits(&timer_hw->intr, 1u << led->timer_irq);
-    led->state = false;
-
-    // Setting the IRQ handler
-    irq_set_exclusive_handler(led->timer_irq, led_timer_handler);
-    irq_set_enabled(led->timer_irq, true);
-    hw_set_bits(&timer_hw->inte, 1u << led->timer_irq); ///< Enable alarm1 for keypad debouncer
-    timer_hw->alarm[led->timer_irq] = (uint32_t)(time_us_64() + led->time); ///< Set alarm1 to trigger in 100ms
-}
-
-
-
 void program(void)
 {
     if (gFlags.B.key){

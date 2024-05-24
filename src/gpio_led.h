@@ -14,10 +14,9 @@
 #include <stdint.h>
 #include "hardware/gpio.h"
 // #include "pico/time.h"
-// #include "hardware/timer.h"
+#include "hardware/timer.h"
 
 #include "functs.h"
-
 
 typedef struct
 {
@@ -31,13 +30,6 @@ typedef struct
     uint8_t timer_irq;  ///< Alarm timer IRQ number (TIMER_IRQ_0)
 
 }led_rgb_t;
-
-/**
- * @brief Gobal variable for the RGB LED
- * 
- */
-extern led_rgb_t gLed;
-
 
 /**
  * @brief This function initializes the GPIOs for the RGB LED
@@ -57,6 +49,23 @@ static inline void led_init(led_rgb_t *led, uint8_t lsb_rgb)
     gpio_put_masked(0x00000007 << lsb_rgb, 0x00000000);
 }
 
+/**
+ * @brief Configure the led Alarm
+ * 
+ * @param led 
+ */
+static inline void led_set_alarm(led_rgb_t *led)
+{
+    // Interrupt acknowledge
+    hw_clear_bits(&timer_hw->intr, 1u << led->timer_irq);
+    led->state = false;
+
+    // Setting the IRQ handler
+    irq_set_exclusive_handler(led->timer_irq, led_timer_handler);
+    irq_set_enabled(led->timer_irq, true);
+    hw_set_bits(&timer_hw->inte, 1u << led->timer_irq); ///< Enable alarm1 for keypad debouncer
+    timer_hw->alarm[led->timer_irq] = (uint32_t)(time_us_64() + led->time); ///< Set alarm1 to trigger in 100ms
+}
 
 /**
  * @brief Configure the RGB LED: turn on the LED, set the color and set the alarm
@@ -101,16 +110,9 @@ static inline void led_off(led_rgb_t *led)
     gpio_put_masked(0x00000007 << led->lsb_rgb, 0x00000000);
 }
 
-/**
- * @brief This function toggles the LED. If the LED is on, it turns it off; if it is off, it turns it on.
- * 
- * @param led 
- * @param color 
- */
 static inline void led_toggle(led_rgb_t *led, uint8_t color)
 {
     gpio_xor_mask(0x00000007 << led->lsb_rgb);
 }
-
 
 #endif
