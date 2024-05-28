@@ -26,6 +26,10 @@
 #include "gps.h"
 #include "microphone.h"
 
+#define BUTTON_GPIO 10
+#define LED_GPIO 0
+#define MPHONE_GPIO 26
+
 volatile enum{
     WAIT,       ///< The system is waiting for the GPS to hook (red led blinking)
     READY,      ///< GPS is hooked and the system is ready to measure (green led)
@@ -41,10 +45,10 @@ mphone_t gMphone;       ///< Global variable that stores the microphone informat
 
 void initGlobalVariables(void)
 {
-    led_init(&gLed, 0);
+    led_init(&gLed, LED_GPIO, 1000000);
     gFlags.W = 0;
-    button_init(&gButton, 10);
-    mphone_init(&gMphone, 26, 44100);
+    button_init(&gButton, BUTTON_GPIO);
+    mphone_init(&gMphone, MPHONE_GPIO, 44100); 
 }
 
 void initPWMasPIT(uint8_t slice, uint16_t milis, bool enable)
@@ -85,11 +89,15 @@ bool check()
 void gpioCallback(uint num, uint32_t mask) 
 {
     ///< Start measuring the noise when the button is pressed and the system is ready
-    if (num = gButton.KEY.gpio_num && gSystemState == READY){
+    if (num == gButton.KEY.gpio_num && gSystemState == READY){
         pwm_set_enabled(0, true); ///< Enable the button debouncer
         button_set_irq_enabled(&gButton, false); ///< Disable the button IRQs
         button_set_zflag(&gButton); ///< Set the flag that indicates that a zero was detected on button
         gButton.KEY.dbnc = 1; ///< Set the flag that indicates that debouncer is active
+    }
+    ///< Stop measuring the noise when the button is pressed and the system is measuring. Red led will be on for 3s
+    else if (num == gButton.KEY.gpio_num && gSystemState == MEASURE) {
+
     }
     
     gpio_acknowledge_irq(num, mask); ///< gpio IRQ acknowledge

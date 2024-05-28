@@ -37,12 +37,12 @@ typedef struct
  * @param led 
  * @param lsb_rgb 
  */
-static inline void led_init(led_rgb_t *led, uint8_t lsb_rgb)
+static inline void led_init(led_rgb_t *led, uint8_t lsb_rgb, uint32_t time)
 {
     led->lsb_rgb = lsb_rgb;
     led->state = false;
     led->color = 0x00;
-    led->time = 500000;
+    led->time = time;
     led->timer_irq = TIMER_IRQ_0;
     gpio_init_mask(0x00000007 << lsb_rgb); // gpios for key rows 2,3,4,5
     gpio_set_dir_masked(0x00000007 << lsb_rgb, 0x00000007 << lsb_rgb); // rows as outputs
@@ -77,6 +77,66 @@ static inline void led_setup(led_rgb_t *led, uint8_t color)
 {
     gpio_put_masked(0x00000007 << led->lsb_rgb, (uint32_t)color << led->lsb_rgb);
     led_set_alarm(led);
+}
+
+/**
+ * @brief Configure the RGB LED: turn on the LED, set the color to red and set the alarm
+ * 
+ * @param led 
+ */
+static inline void led_setup_red(led_rgb_t *led)
+{
+    led_setup(led, 0x04);
+}
+
+/**
+ * @brief Configure the RGB LED: turn on the LED, set the color to green and set the alarm
+ * 
+ * @param led 
+ */
+static inline void led_setup_green(led_rgb_t *led)
+{
+    led_setup(led, 0x02);
+}
+
+/**
+ * @brief Configure the RGB LED: turn on the LED, set the color to blue and set the alarm
+ * 
+ * @param led 
+ */
+static inline void led_setup_blue(led_rgb_t *led)
+{
+    led_setup(led, 0x01);
+}
+
+/**
+ * @brief Configure the RGB LED: turn on the LED, set the color to white and set the alarm
+ * 
+ * @param led 
+ */
+static inline void led_setup_white(led_rgb_t *led)
+{
+    led_setup(led, 0x07);
+}
+
+/**
+ * @brief Configure the RGB LED: turn on the LED, set the color to yellow and set the alarm
+ * 
+ * @param led 
+ */
+static inline void led_setup_yellow(led_rgb_t *led)
+{
+    led_setup(led, 0x06);
+}
+
+/**
+ * @brief Configure the RGB LED: turn on the LED, set the color to purple and set the alarm
+ * 
+ * @param led 
+ */
+static inline void led_setup_purple(led_rgb_t *led)
+{
+    led_setup(led, 0x05);
 }
 
 /**
