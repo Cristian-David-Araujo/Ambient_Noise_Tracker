@@ -20,10 +20,7 @@
 typedef union{
     uint8_t W;
     struct{
-        uint8_t key         :1; //keypad interruption pending
-        uint8_t nfc         :1; //tag interruption pending
-        uint8_t kpad_cols   :1; //keypad cols interruption pending
-        uint8_t kpad_rows   :1; //keypad rows interruption pending
+        uint8_t button      :1; //Button interruption pending
         uint8_t             :3;
     }B;
 }flags_t;
@@ -33,6 +30,18 @@ typedef union{
  * 
  */
 void initGlobalVariables(void);
+
+/**
+ * @brief This function initializes a PWM signal as a periodic interrupt timer (PIT).
+ * Each slice will generate interruptions at a period of milis miliseconds.
+ * Due to each slice share clock counter (period), events with diferents periods 
+ * must not be generated in the same slice, i.e, they must not share channel.
+ * 
+ * @param slice 
+ * @param milis Period of the PWM interruption in miliseconds
+ * @param enable 
+ */
+void initPWMasPIT(uint8_t slice, uint16_t milis, bool enable);
 
 /**
  * @brief This function is the main, here the program is executed when a flag of interruption is pending.
@@ -66,6 +75,24 @@ void gpioCallback(uint num, uint32_t mask);
 
  */
 void led_timer_handler(void);
+
+/**
+ * @brief Handler for the ADC interruption
+ * 
+ */
+void adc_handler(void);
+
+/**
+ * @brief Handler for the DMA interruption
+ * 
+ */
+void dma_handler(void);
+
+/**
+ * @brief Handler for the PWM interruption
+ * 
+ */
+void pwm_handler(void);
 
 
 

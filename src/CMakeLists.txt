@@ -32,7 +32,10 @@ target_link_libraries(tracker
 	hardware_irq 
 	hardware_sync
 	hardware_i2c
-	hardware_spi)
+	hardware_spi
+	hardware_adc
+	hardware_uart
+	hardware_dma)
 
 pico_enable_stdio_uart(tracker 0)
 pico_enable_stdio_usb(tracker 1)

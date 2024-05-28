@@ -31,6 +31,10 @@ int main() {
     // Initialize global variables
     initGlobalVariables();
 
+    // PWM configuration
+    initPWMasPIT(0, 100, false);     // 2ms for the secuence generation
+    irq_set_exclusive_handler(PWM_IRQ_WRAP, pwm_handler);
+
 
     while(1){
         while(check()){
