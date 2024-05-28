@@ -41,6 +41,7 @@ int main() {
             program();
         }
         __wfi(); // Wait for interrupt (Will put the processor into deep sleep until woken by the RTC interrupt)
+        // xosc_dormant();
     }
 }
 

@@ -58,7 +58,6 @@ static inline void led_set_alarm(led_rgb_t *led)
 {
     // Interrupt acknowledge
     hw_clear_bits(&timer_hw->intr, 1u << led->timer_irq);
-    led->state = false;
 
     // Setting the IRQ handler
     irq_set_exclusive_handler(led->timer_irq, led_timer_handler);
@@ -75,6 +74,7 @@ static inline void led_set_alarm(led_rgb_t *led)
  */
 static inline void led_setup(led_rgb_t *led, uint8_t color) 
 {
+    color &= (uint8_t)led->state;
     gpio_put_masked(0x00000007 << led->lsb_rgb, (uint32_t)color << led->lsb_rgb);
     led_set_alarm(led);
 }
@@ -137,6 +137,16 @@ static inline void led_setup_yellow(led_rgb_t *led)
 static inline void led_setup_purple(led_rgb_t *led)
 {
     led_setup(led, 0x05);
+}
+
+/**
+ * @brief Configure the RGB LED: turn on the LED, set the color to orange and set the alarm
+ * 
+ * @param led 
+ */
+static inline void led_setup_orange(led_rgb_t *led)
+{
+    led_setup(led, 0x03);
 }
 
 /**

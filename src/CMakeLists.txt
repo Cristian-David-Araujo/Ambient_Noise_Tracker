@@ -25,6 +25,7 @@ target_include_directories(tracker PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(tracker 
 	pico_stdlib
 	pico_flash
+	pico_sleep
 	hardware_timer
 	pico_cyw43_arch_none 
 	hardware_gpio 

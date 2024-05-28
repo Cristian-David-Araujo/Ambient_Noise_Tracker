@@ -21,6 +21,7 @@ typedef union{
     uint8_t W;
     struct{
         uint8_t button      :1; //Button interruption pending
+        uint8_t mphone_dma  :1; //DMA interruption pending
         uint8_t             :3;
     }B;
 }flags_t;
@@ -75,12 +76,6 @@ void gpioCallback(uint num, uint32_t mask);
 
  */
 void led_timer_handler(void);
-
-/**
- * @brief Handler for the ADC interruption
- * 
- */
-void adc_handler(void);
 
 /**
  * @brief Handler for the DMA interruption

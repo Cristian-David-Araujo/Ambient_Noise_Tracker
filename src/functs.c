@@ -19,6 +19,11 @@
 #include "hardware/irq.h"
 #include "hardware/gpio.h"
 #include "hardware/sync.h"
+#include "hardware/xosc.h"
+#include "hardware/pll.h"
+#include "hardware/clocks.h"
+#include "hardware/structs/pll.h"
+#include "hardware/structs/clocks.h"
 
 #include "functs.h"
 #include "gpio_led.h"
@@ -75,6 +80,21 @@ void program(void)
     if (gFlags.B.button){
         gFlags.B.key = 0;
         printf("Key interruption\n");
+        gSystemState = MEASURE;         ///< The system is measuring the noise
+        mphone_dma_trigger(&gMphone);   ///< Start the DMA for the microphone
+    }
+    if (gFlags.B.mphone_dma){
+        gFlags.B.mphone_dma = 0;
+        printf("Microphone interruption\n");
+        mphone_calculate_spl(&gMphone); ///< Calculate the Sound Pressure Level
+        gMphone.spl_index++;
+        if (gMphone.spl_index == MPHONE_SIZE_SPL) {
+            gSystemState = DONE;            ///< The system has finished the measurement
+            gLed.time = 2000000;            ///< 2s
+            led_setup_orange(&gLed);       ///< Orange led
+            mphone->spl_index = 0;
+            mphone_store_spl(&gMphone);    ///< Store the SPL array in non-volatile memory
+        }
     }
 }
 
@@ -97,7 +117,9 @@ void gpioCallback(uint num, uint32_t mask)
     }
     ///< Stop measuring the noise when the button is pressed and the system is measuring. Red led will be on for 3s
     else if (num == gButton.KEY.gpio_num && gSystemState == MEASURE) {
-
+        gSystemState = ERROR; ///< An anomaly has occurred
+        gLed.time = 3000000; ///< 3s
+        led_setup_green(&gLed);
     }
     
     gpio_acknowledge_irq(num, mask); ///< gpio IRQ acknowledge
@@ -109,20 +131,21 @@ void led_timer_handler(void)
     // Set the alarm
     hw_clear_bits(&timer_hw->intr, 1u << gLed.timer_irq);
 
-    if (gLed.state){
-        led_set_alarm(&gLed);
-    }else {
+    if (gSystemState == WAIT){
+        gLed.state = !gLed.state;
+        led_setup_red(&gLed);
+    }
+    else if (gSystemState == READY || gSystemState == MEASURE || gSystemState == DONE || gSystemState == ERROR) {
         led_off(&gLed);
         irq_set_enabled(gLed.timer_irq, false); ///< Disable the led timer
     }
-}
 
-void adc_handler(void)
-{
 }
 
 void dma_handler(void)
 {
+    dma_irqn_acknowledge_channel(gMphone.dma_irqn, gMphone.dma_channel); ///< Acknowledge the DMA IRQ
+    gFlags.B.mphone_dma = 1; ///< Set the flag that indicates that the DMA has finished
 }
 
 void pwm_handler(void)
@@ -134,9 +157,9 @@ void pwm_handler(void)
         button = gpio_get(gButton.KEY.gpio_num);
         if(button_is_2nd_zero(&gButton)){
             if(!button){
-                button_set_irq_enabled(&gButton, true); // Enable the GPIO IRQs
-                pwm_set_enabled(0, false);    // Disable the button debouncer
-                signal_calculate(&gSignal); // Recalculate the signal values
+                button_set_irq_enabled(&gButton, true); ///< Enable the GPIO IRQs
+                pwm_set_enabled(0, false);      ///< Disable the button debouncer
+                gFlags.B.button = 1;
                 gButton.KEY.dbnc = 0;
             }
             else

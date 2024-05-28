@@ -22,7 +22,7 @@ void mphone_init(mphone_t *mphone, uint8_t gpio_num, uint32_t sample)
     mphone->gpio_num = gpio_num;
     mphone->spl_index = 0;
     mphone->en = false;
-    mphone->dma_irq = DMA_IRQ_0;
+    mphone->dma_irq = 0;
     mphone->adc_chan = 26 - gpio_num; ///< channel 0 is GPIO 26, channel 1 is GPIO 27, etc.
     mphone->sample = sample;
 
@@ -74,11 +74,6 @@ void mphone_calculate_spl(mphone_t *mphone)
     }
     sum = sum/MPHONE_SIZE_BUFFER;
     mphone->spl[mphone->spl_index] = 20*pow(log10(sum/0.000020), 2);
-    mphone->spl_index++;
-    if (mphone->spl_index >= MPHONE_SIZE_SPL)
-    {
-        mphone->spl_index = 0;
-    }
 }
 
 void mphone_store_spl(mphone_t *mphone)
