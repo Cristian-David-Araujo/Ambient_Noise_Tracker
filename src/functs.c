@@ -30,6 +30,7 @@
 led_rgb_t gLed;
 
 flags_t gFlags; ///< Global variable that stores the flags of the interruptions pending
+gps_t gGps; ///< Global variable the structure of the GPS
 
 void initGlobalVariables(void)
 {
@@ -70,6 +71,11 @@ void led_timer_handler(void)
     }
 }
 
+void uart_read_handler(void)
+{
+    gFlags.B.uart_read = 1;
+    gGps.data_available = true;
+}
 
 void program(void)
 {

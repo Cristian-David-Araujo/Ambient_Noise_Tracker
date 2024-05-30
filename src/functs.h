@@ -24,7 +24,8 @@ typedef union{
         uint8_t nfc         :1; //tag interruption pending
         uint8_t kpad_cols   :1; //keypad cols interruption pending
         uint8_t kpad_rows   :1; //keypad rows interruption pending
-        uint8_t             :3;
+        uint8_t uart_read   :1; //uart read interruption pending
+        uint8_t             :3; //reserved
     }B;
 }flags_t;
 
@@ -66,6 +67,12 @@ void gpioCallback(uint num, uint32_t mask);
 
  */
 void led_timer_handler(void);
+
+/**
+ * @brief Handler for the UART read pending interruption
+ * 
+ */
+void uart_read_handler(void);
 
 
 
