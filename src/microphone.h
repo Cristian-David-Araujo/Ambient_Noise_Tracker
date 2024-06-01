@@ -18,9 +18,14 @@
 #include "hardware/adc.h"
 #include "hardware/dma.h"
 #include "hardware/irq.h"
+#include "hardware/clocks.h"
+#include "hardware/sync.h"
+#include "pico/flash.h"
 
 #define MPHONE_SIZE_BUFFER 256
 #define MPHONE_SIZE_SPL 10 ///< Size of the Sound Pressure Level array.
+#define FLASH_TARGET_OFFSET (PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE) ///< Flash-based address of the last sector
+#define REF_PRESSURE 0.000020
 
 /**
  * @typedef mphone_t 
@@ -78,5 +83,15 @@ void mphone_calculate_spl(mphone_t *mphone);
  * @param mphone 
  */
 void mphone_store_spl(mphone_t *mphone);
+
+/**
+ * @brief Definition of the wrapper function for the flash_safe_execute function,
+ * which is used to erase the last sector of the flash memory.
+ * 
+ */
+static inline void mphone_wrapper()
+{
+    flash_range_erase((PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE), FLASH_SECTOR_SIZE);
+}
 
 #endif // __MICROPHONE_H__

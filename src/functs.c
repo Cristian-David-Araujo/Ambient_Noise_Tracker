@@ -43,15 +43,16 @@ mphone_t gMphone;       ///< Global variable that stores the microphone informat
 
 void initGlobalVariables(void)
 {
-    led_init(&gLed, LED_GPIO, 1000000);
-    gFlags.W = 0;
-    button_init(&gButton, BUTTON_GPIO);
-    mphone_init(&gMphone, MPHONE_GPIO, 44100);
-
     ///< Set the system state to DORMANT
     gSystem.state = DORMANT; 
     clock_config();
     gpio_set_dormant_irq_enabled(BUTTON_GPIO, GPIO_IRQ_EDGE_RISE, true);
+    irq_set_exclusive_handler(TIMER_IRQ_2, check_timer_handler);
+
+    led_init(&gLed, LED_GPIO, 1000000);
+    gFlags.W = 0;
+    button_init(&gButton, BUTTON_GPIO);
+    mphone_init(&gMphone, MPHONE_GPIO, 1000);
 }
 
 void initPWMasPIT(uint8_t slice, uint16_t milis, bool enable)
@@ -71,51 +72,6 @@ void initPWMasPIT(uint8_t slice, uint16_t milis, bool enable)
     pwm_set_irq_enabled(slice, true);
     irq_set_enabled(PWM_IRQ_WRAP, true);
     pwm_init(slice, &cfg, enable);
-}
-
-void program(void)
-{
-    if (gFlags.B.bt_wait){
-        gFlags.B.bt_wait = 0;
-        printf("Button interruption\n");
-        gLed.time = 1000000;    ///< 1s
-        led_setup_red(&gLed);   ///< Red led
-    }
-    if (gFlags.B.bt_meas){
-        gFlags.B.bt_meas = 0;
-        printf("Button interruption\n");
-        gLed.time = 1000000;    ///< 1s
-        led_setup_yellow(&gLed);///< Yellow led
-        gSystem.state = MEASURE;         ///< The system is measuring the noise
-        mphone_dma_trigger(&gMphone);   ///< Start the DMA for the microphone
-    }
-    if (gFlags.B.bt_error){
-        gFlags.B.bt_error = 0;
-        printf("Button interruption\n");
-        gLed.time = 3000000;    ///< 3s
-        led_setup_red(&gLed);   ///< Red led
-    }
-    if (gFlags.B.mphone_dma){
-        gFlags.B.mphone_dma = 0;
-        printf("Microphone interruption\n");
-        mphone_calculate_spl(&gMphone); ///< Calculate the Sound Pressure Level
-        gMphone.spl_index++;
-        if (gMphone.spl_index == MPHONE_SIZE_SPL) {
-            gSystem.state = DONE;            ///< The system has finished the measurement
-            gLed.time = 2000000;            ///< 2s
-            led_setup_orange(&gLed);       ///< Orange led
-            gMphone.spl_index = 0;
-            mphone_store_spl(&gMphone);    ///< Store the SPL array in non-volatile memory
-        }
-    }
-}
-
-bool check()
-{
-    if(gFlags.W){
-        return true;
-    }
-    return false;
 }
 
 void clock_config(void)
@@ -169,6 +125,46 @@ void clock_config(void)
     measure_freqs();
 }
 
+void program(void)
+{
+    if (gFlags.B.wait){ ///< The system is waiting for the GPS to be hooked
+        gFlags.B.wait = 0;
+        printf("WAIT \n");
+        gLed.time = 1000000;    ///< 1s
+        led_setup_red(&gLed);   ///< Red led
+        measure_freqs();
+    }
+    if (gFlags.B.meas){ ///< Start the measurement
+        gFlags.B.meas = 0;
+        printf("MEASURE \n");
+        gLed.time = 10000000;       ///< 10s
+        led_setup_yellow(&gLed);    ///< Yellow led
+        hw_set_bits(&timer_hw->inte, 1u << TIMER_IRQ_2); ///< Enable alarm0 interrupt
+        timer_hw->alarm[2] = (uint32_t)(time_us_64() + 1000000); ///< Set alarm1 to trigger in 1s
+        mphone_dma_trigger(&gMphone);   ///< Start the DMA for the microphone
+    }
+    if (gFlags.B.error){ ///< An anomaly has occurred
+        gFlags.B.error = 0;
+        printf("ERROR \n");
+        gLed.time = 3000000;    ///< 3s
+        led_setup_red(&gLed);   ///< Red led
+    }
+    if (gFlags.B.mphone_dma){ ///< The DMA has finished and the microphone has a new SPL
+        gFlags.B.mphone_dma = 0;
+        printf("Microphone interruption\n");
+        gSystem.dma_transfer_done = true;
+        mphone_calculate_spl(&gMphone); ///< Calculate the Sound Pressure Level
+        gMphone.spl_index++;
+        if (gMphone.spl_index == MPHONE_SIZE_SPL) {
+            gSystem.state = DONE;            ///< The system has finished the measurement
+            gLed.time = 2000000;            ///< 2s
+            led_setup_orange(&gLed);       ///< Orange led
+            gMphone.spl_index = 0;
+            mphone_store_spl(&gMphone);    ///< Store the SPL array in non-volatile memory
+        }
+    }
+}
+
 void gpioCallback(uint num, uint32_t mask) 
 {
     if (num == gButton.KEY.gpio_num) {
@@ -188,9 +184,10 @@ void gpioCallback(uint num, uint32_t mask)
             gSystem.state = ERROR; ///< An anomaly has occurred
             button_setup_pwm_dbnc(&gButton); ///< Debounce setup
             break;
+        default:
+            break;
         }
     }
-    
     gpio_acknowledge_irq(num, mask); ///< gpio IRQ acknowledge
 }
 
@@ -205,11 +202,11 @@ void led_timer_handler(void)
     }
     else if (gSystem.state == READY || gSystem.state == MEASURE) {
         led_off(&gLed);
-        irq_set_enabled(gLed.timer_irq, false); ///< Disable the led timer
+        // irq_set_enabled(gLed.timer_irq, false); ///< Disable the led timer
     }
     else if (gSystem.state == DONE || gSystem.state == ERROR){
         led_off(&gLed);
-        irq_set_enabled(gLed.timer_irq, false); ///< Disable the led timer
+        // irq_set_enabled(gLed.timer_irq, false); ///< Disable the led timer
         gSystem.state = DORMANT; ///< The system is going to DORMANT state
     }
 
@@ -217,6 +214,19 @@ void led_timer_handler(void)
 
 void check_timer_handler(void)
 {
+    // Aknowledge the interrupt
+    hw_clear_bits(&timer_hw->intr, 1u << TIMER_IRQ_2);
+
+    if (!gSystem.dma_transfer_done) {
+        gSystem.state = ERROR; ///< An anomaly has occurred: the DMA transfer is not done after 1s
+        gFlags.B.error = 1; ///< Set the flag that indicates that an anomaly has occurred
+    }
+    else {
+        hw_set_bits(&timer_hw->inte, 1u << TIMER_IRQ_2); ///< Enable alarm0 interrupt
+        timer_hw->alarm[2] = (uint32_t)(time_us_64() + 1000000); ///< Set alarm1 to trigger in 1s
+        mphone_dma_trigger(&gMphone);   ///< Start the DMA for the microphone
+    }
+
 }
 
 void dma_handler(void)
@@ -240,13 +250,15 @@ void pwm_handler(void)
                 switch (gSystem.state)
                 {
                 case WAIT:
-                    gFlags.B.bt_wait = 1; ///< The systen just power on and is waiting for the GPS to hook
+                    gFlags.B.wait = 1; ///< The systen just power on and is waiting for the GPS to hook
                     break;
                 case MEASURE:
-                    gFlags.B.bt_meas = 1; ///< Start the measurement
+                    gFlags.B.meas = 1; ///< Start the measurement
                     break;
                 case ERROR:
-                    gFlags.B.bt_error = 1; ///< An anomaly has occurred
+                    gFlags.B.error = 1; ///< An anomaly has occurred
+                    break;
+                default:
                     break;
                 }
             }

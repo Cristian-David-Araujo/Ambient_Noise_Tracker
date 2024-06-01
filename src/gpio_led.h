@@ -47,6 +47,9 @@ static inline void led_init(led_rgb_t *led, uint8_t lsb_rgb, uint32_t time)
     gpio_init_mask(0x00000007 << lsb_rgb); // gpios for key rows 2,3,4,5
     gpio_set_dir_masked(0x00000007 << lsb_rgb, 0x00000007 << lsb_rgb); // rows as outputs
     gpio_put_masked(0x00000007 << lsb_rgb, 0x00000000);
+
+    irq_set_exclusive_handler(led->timer_irq, led_timer_handler);
+    irq_set_enabled(led->timer_irq, true);
 }
 
 /**
@@ -60,9 +63,7 @@ static inline void led_set_alarm(led_rgb_t *led)
     hw_clear_bits(&timer_hw->intr, 1u << led->timer_irq);
 
     // Setting the IRQ handler
-    irq_set_exclusive_handler(led->timer_irq, led_timer_handler);
-    irq_set_enabled(led->timer_irq, true);
-    hw_set_bits(&timer_hw->inte, 1u << led->timer_irq); ///< Enable alarm1 for keypad debouncer
+    hw_set_bits(&timer_hw->inte, 1u << led->timer_irq); ///< Enable alarm0 interrupt
     timer_hw->alarm[led->timer_irq] = (uint32_t)(time_us_64() + led->time); ///< Set alarm1 to trigger in 100ms
 }
 

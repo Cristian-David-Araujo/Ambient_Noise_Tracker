@@ -29,7 +29,7 @@ void mphone_init(mphone_t *mphone, uint8_t gpio_num, uint32_t sample)
     ///< Initialize the ADC
     adc_gpio_init(26 + mphone->adc_chan);
     adc_init();
-    adc_set_clkdiv(USB_CLK_KHZ*1000/sample); ///< Set the ADC clock to the sample rate
+    adc_set_clkdiv(6.5*MHZ*1000/sample); ///< Set the ADC clock to the sample rate
     adc_select_input(mphone->adc_chan); ///< Select the ADC channel
     adc_fifo_setup(
         true,   ///< Write each completed conversion to the sample FIFO
@@ -67,15 +67,31 @@ void mphone_init(mphone_t *mphone, uint8_t gpio_num, uint32_t sample)
 
 void mphone_calculate_spl(mphone_t *mphone)
 {
-    uint32_t sum = 0;
+    float sum = 0;
     for (uint8_t i = 0; i < MPHONE_SIZE_BUFFER; i++)
     {
         sum += mphone->adc_buffer[i];
     }
     sum = sum/MPHONE_SIZE_BUFFER;
-    mphone->spl[mphone->spl_index] = 20*pow(log10(sum/0.000020), 2);
+    mphone->spl[mphone->spl_index] = 20*pow(log10(sum/REF_PRESSURE), 2);
 }
 
 void mphone_store_spl(mphone_t *mphone)
 {
+    // An array of 256 bytes, multiple of FLASH_PAGE_SIZE. Database is 60 bytes.
+    uint32_t buf[FLASH_PAGE_SIZE/sizeof(uint32_t)];
+
+    // Copy the database into the buffer
+    for (int i = 0; i < MPHONE_SIZE_BUFFER; i++){
+        buf[i] = mphone->spl[i];
+    }
+    // Program buf[] into the first page of this sector
+    // Each page is 256 bytes, and each sector is 4K bytes
+    // Erase the last sector of the flash
+    flash_safe_execute(mphone_wrapper, NULL, 500);
+
+    uint32_t ints = save_and_disable_interrupts();
+    flash_range_program(FLASH_TARGET_OFFSET, (uint8_t *)buf, FLASH_PAGE_SIZE);
+    restore_interrupts (ints);
 }
+

@@ -20,11 +20,11 @@
 typedef union{
     uint8_t W;
     struct{
-        uint8_t bt_wait         :1; ///<  Button interruption pending: power on the system
-        uint8_t bt_meas         :1; ///< Button interruption pending: start the measurement
-        uint8_t bt_error        :1; ///< Button interruption pending: error
+        uint8_t wait         :1; ///<  Button interruption pending: power on the system
+        uint8_t meas         :1; ///< Button interruption pending: start the measurement
+        uint8_t error        :1; ///< Button interruption pending: error
         uint8_t mphone_dma      :1; ///< DMA interruption pending
-        uint8_t                 :3;
+        uint8_t                 :4;
     }B;
 }flags_t;
 
@@ -37,6 +37,7 @@ typedef struct _system_t{
         DONE,       ///< The system has finished the measurement and is sending the data (orange led)
         ERROR       ///< An anomaly has occurred (red led for 3s)
     } state;
+    bool dma_transfer_done; ///< Flag to indicate that the DMA transfer is done
 } system_t;
 
 /**
@@ -62,14 +63,6 @@ void initPWMasPIT(uint8_t slice, uint16_t milis, bool enable);
  * 
  */
 void program(void);
-
-/**
- * @brief This function checks if there are a flag of interruption pending for execute the program.
- * 
- * @return true When there are a flag of interruption pending
- * @return false When there are not a flag of interruption pending
- */
-bool check();
 
 /**
  * @brief This function configures the clocks of the system.
