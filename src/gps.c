@@ -9,7 +9,7 @@ static const double x_pi = 3.14159265358979324 * 3000.0 / 180.0;
 
 
 
-void gps_init(gps_t *gps, uart_inst_t *uart, uint8_t rx, uint8_t tx, uint16_t baudrate)
+void gps_init(gps_t *gps, uart_inst_t *uart, uint8_t rx, uint8_t tx, uint32_t baudrate)
 {
     // Initialize the GPS module
     gps->uart = uart;
@@ -21,6 +21,7 @@ void gps_init(gps_t *gps, uart_inst_t *uart, uint8_t rx, uint8_t tx, uint16_t ba
 
     //Initialize the GPS buffer with 0
     memset(gps->buffer, 0, sizeof(gps->buffer));
+    gps->buffer_index = 0;
     
     // Initialize the UART
     uart_init(gps->uart, gps->baudrate);
@@ -39,7 +40,6 @@ void gps_init(gps_t *gps, uart_inst_t *uart, uint8_t rx, uint8_t tx, uint16_t ba
 
     // Set the UART IRQ enables for read data
     uart_set_irq_enables(gps->uart, true, false);
-
 }
 
 void gps_send_command(gps_t *gps, char *command)
@@ -59,132 +59,84 @@ void gps_send_command(gps_t *gps, char *command)
     check_char[1] = (checksum & 0x0F) < 10 ? (checksum & 0x0F) + '0' : (checksum & 0x0F) - 10 + 'A';
 
     // Send command and checksum
-    uart_write(uart0, (const uint8_t *)command, strlen(command));
-    uart_write(uart0, (const uint8_t *)"*", 1);
-    uart_write(uart0, (const uint8_t *)check_char, 2);
-    uart_write(uart0, (const uint8_t *)"\r\n", 2);
+    uart_write(uart0, (uint8_t *)command, strlen(command));
+    uart_write(uart0, (uint8_t *)"*", 1);
+    uart_write(uart0, (uint8_t *)check_char, 2);
+    uart_write(uart0, (uint8_t *)"\r\n", 2);
 
     // Wait for the response of the GPS module for 200ms min
 }
 
 void gps_get_GNRMC(gps_t *gps)
 {
-    // Variables for the GPS data
-    uint16_t add = 0, x = 0, z = 0, i = 0;
-    uint32_t Time = 0;
-    uint32_t latitude = 0, longitude = 0;
+    printf("GPS data: %s\n", gps->buffer);
 
-    // Initialize the GPS data
-    gps->status = 0;
-    gps->time_h = 0;
-    gps->time_m = 0;
-    gps->time_s = 0;
-
-    // Read the GPS data
-    uart_read(gps->uart, (uint8_t *)gps->buffer, GPS_BUFFSIZE);
-    printf("%s\r\n", gps->buffer);
-
-    add = 0;
-    while (add < GPS_BUFFSIZE - 71) {
-        // Check if the GPS data is valid GNRMC or GPRMC
-        if (gps->buffer[add] == '$' && gps->buffer[add + 1] == 'G' &&
-            (gps->buffer[add + 2] == 'N' || gps->buffer[add + 2] == 'P') &&
-            gps->buffer[add + 3] == 'R' && gps->buffer[add + 4] == 'M' && gps->buffer[add + 5] == 'C') {
-
-            x = 0;
-            for (z = 0; x < 12; z++) {
-                if (gps->buffer[add + z] == '\0') {
-                    break;
-                }
-                if (gps->buffer[add + z] == ',') {
-                    x++;
-                    if (x == 1) { // The first comma is followed by time
-                        Time = 0;
-                        for (i = 0; gps->buffer[add + z + i + 1] != '.'; i++) {
-                            if (gps->buffer[add + z + i + 1] == '\0') {
-                                break;
-                            }
-                            if (gps->buffer[add + z + i + 1] == ',') {
-                                break;
-                            }
-                            Time = (gps->buffer[add + z + i + 1] - '0') + Time * 10;
-                        }
-
-                        gps->time_h = Time / 10000 + 8;
-                        gps->time_m = Time / 100 % 100;
-                        gps->time_s = Time % 100;
-                        if (gps->time_h >= 24) {
-                            gps->time_h = gps->time_h - 24;
-                        }
-                    }
-                    
-                    else if (x == 2) {
-                        // A indicates that it has been positioned
-                        // V indicates that there is no positioning.
-                        gps->status = (gps->buffer[add + z + 1] == 'A') ? 1 : 0;
-                    }
-                    
-                    else if (x == 3) {
-                        latitude = 0;
-                        // Calculate latitude
-                        for (i = 0; gps->buffer[add + z + i + 1] != ','; i++) {
-                            if (gps->buffer[add + z + i + 1] == '\0') {
-                                break;
-                            }
-                            if (gps->buffer[add + z + i + 1] == '.') {
-                                continue;
-                            }
-                            latitude = (gps->buffer[add + z + i + 1] - '0') + latitude * 10;
-                        }
-                        gps->latitude = latitude / 1000000.0;
-                    } 
-                    
-                    else if (x == 4) {
-                        gps->latitude_area = gps->buffer[add + z + 1];
-                    } 
-                    
-                    else if (x == 5) {
-                        longitude = 0;
-                        // Calculate longitude
-                        for (i = 0; gps->buffer[add + z + i + 1] != ','; i++) {
-                            if (gps->buffer[add + z + i + 1] == '\0') {
-                                break;
-                            }
-                            if (gps->buffer[add + z + i + 1] == '.') {
-                                continue;
-                            }
-                            longitude = (gps->buffer[add + z + i + 1] - '0') + longitude * 10;
-                        }
-                        gps->longitude = longitude / 1000000.0;
-                    } 
-                    
-                    else if (x == 6) {
-                        gps->longitude_area = gps->buffer[add + z + 1];
-                    }
-                }
-            }
-            add = 0;
-            break;
-        }
-
-        // If the buffer is empty
-        if (gps->buffer[add + 5] == '\0') {
-            add = 0;
-            break;
-        }
-
-        // If the buffer is full
-        add++;
-        if (add > GPS_BUFFSIZE) {
-            add = 0;
-            break;
-        }
+    // Check if the GPS data is valid GNRMC or GPRMC
+    if (strncmp(gps->buffer, "$GNRMC", 6) != 0 && strncmp(gps->buffer, "$GPRMC", 6) != 0) {
+        printf("Invalid GPS data format.\n");
+        return;
     }
+
+    // Parse the GPS data
+    char *token = strtok(gps->buffer, ",");
+    uint16_t field_index = 0;
+
+    while (token != NULL) {
+        //printf("Token: %s\n", token);
+        switch (field_index) {
+            case 1:  // Time
+                    // Extract hours
+                    gps->time_h = (token[0] - '0') * 10 + (token[1] - '0');
+                    // Extract minutes
+                    gps->time_m = (token[2] - '0') * 10 + (token[3] - '0');
+                    // Extract seconds
+                    gps->time_s = (token[4] - '0') * 10 + (token[5] - '0');
+                    // Extract milliseconds
+                    gps->time_ms = (token[7] - '0') * 10 + (token[8] - '0');
+                break;
+            case 2:  // Status
+                gps->status = (token[0] == 'A') ? 1 : 0; // 1: valid, 0: invalid
+                break;
+            case 3:  // Latitude
+                if (strlen(token) >= 4) {
+                    double lat_deg, lat_min;
+                    sscanf(token, "%2lf%lf", &lat_deg, &lat_min);
+                    gps->latitude = lat_deg + lat_min / 60.0;
+                }
+                break;
+            case 4:  // Latitude Direction
+                gps->latitude_area = token[0];
+                if (gps->latitude_area == 'S') {
+                    gps->latitude = -gps->latitude;
+                }
+                break;
+            case 5:  // Longitude
+                if (strlen(token) >= 5) {
+                    double lon_deg, lon_min;
+                    sscanf(token, "%3lf%lf", &lon_deg, &lon_min);
+                    gps->longitude = lon_deg + lon_min / 60.0;
+                }
+                break;
+            case 6:  // Longitude Direction
+                gps->longitude_area = token[0];
+                if (gps->longitude_area == 'W') {
+                    gps->longitude = -gps->longitude;
+                }
+                break;
+        }
+        // Get the next token
+        token = strtok(NULL, ",");
+        field_index++;
+    }
+    
+    printf("Time: %d:%d:%d\n", gps->time_h, gps->time_m, gps->time_s);
+    printf("Status: %d\n", gps->status);
+    printf("Latitude: %f %c\n", gps->latitude, gps->latitude_area);
+    printf("Longitude: %f %c\n", gps->longitude, gps->longitude_area);
 }
 
 void uart_read(uart_inst_t *uart, uint8_t *data, uint16_t len)
 {
-
     if (uart_is_readable(uart)) {
         for (size_t i = 0; i < len; ++i) {
             *data++ = (uint8_t) uart_get_hw(uart)->dr;

@@ -14,6 +14,7 @@
 #define __GPS_H__
 
 #include <stdint.h>
+#include <stdlib.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -95,22 +96,25 @@ typedef struct
     uart_inst_t *uart; //< UART instance (uart0 or uart1)
     uint8_t rx;  //< UART Pin number RX
     uint8_t tx;  //< UART Pin number TX
-    uint16_t baudrate;  //< Baudrate of the GPS module
+    uint32_t baudrate;  //< Baudrate of the GPS module
     bool status;  //< Avalibility GPS positions (1: Success, 0: Fail)
     bool data_available;  //< Data available in the UART
 
     // GPS data
     char buffer[GPS_BUFFSIZE];  //< Buffer for the GPS data
-    double latitude;  //< Latitude
-    double longitude;  //< Longitude
+    uint16_t buffer_index;  //< Index of the buffer
 
     uint8_t time_h;  //< Time hour
     uint8_t time_m;  //< Time minutes
     uint8_t time_s;  //< Time seconds
+    uint8_t time_ms;  //< Time milliseconds
 
+    double latitude;  //< Latitude
+    double longitude;  //< Longitude
     uint8_t longitude_area; //< Longitude area (E or W)
     uint8_t latitude_area;  //< Latitude area (N or S) 
 }gps_t;
+
 
 extern gps_t gGps;
 
@@ -118,7 +122,7 @@ extern gps_t gGps;
  * @brief This function initializes the GPS module L76X of WaveShare with the protocol NMEA 0183
  * 
  */
-void gps_init(gps_t *gps, uart_inst_t *uart, uint8_t rx, uint8_t tx, uint16_t baudrate);
+void gps_init(gps_t *gps, uart_inst_t *uart, uint8_t rx, uint8_t tx, uint32_t baudrate);
 
 /**
  * @brief Send a command to the GPS, automatically calculate the checksum

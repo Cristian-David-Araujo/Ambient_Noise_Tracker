@@ -34,7 +34,14 @@ gps_t gGps; ///< Global variable the structure of the GPS
 
 void initGlobalVariables(void)
 {
-    led_init(&gLed, 0);
+    //Initialize the flags
+    gFlags.W = 0;
+
+    //Initialize the modules
+    led_init(&gLed, 18);
+    gps_init(&gGps, uart1, 5, 4, 115200);
+    
+    led_on(&gLed, 0x04); //Led on red
 }
 
 void gpioCallback(uint num, uint32_t mask) 
@@ -72,16 +79,47 @@ void led_timer_handler(void)
 }
 
 void uart_read_handler(void)
-{
-    gFlags.B.uart_read = 1;
-    gGps.data_available = true;
+{   
+    char data = uart_getc(gGps.uart);
+
+    if (data == '$')
+    {
+        //Start of the data
+        gGps.buffer_index = 0;
+        gGps.data_available = true;
+    }
+    
+    if (data == '\n' && gGps.data_available){
+        //End of the data
+        gGps.buffer[gGps.buffer_index] = '\0';
+        gGps.data_available = false;
+        gFlags.B.uart_read = 1;
+        gGps.buffer_index = 0;
+
+        //Disable the UART read interruption
+        uart_set_irq_enables(gGps.uart, false, false);
+        
+    }
+    else if (gGps.data_available) {
+        //Append the data to the buffer
+        gGps.buffer[gGps.buffer_index] = data;
+        gGps.buffer_index++;
+    }
+
+    led_on(&gLed, 0x06); //Led on yellow
 }
 
 void program(void)
 {
-    if (gFlags.B.key){
-        gFlags.B.key = 0;
-        printf("Key interruption\n");
+    if (gFlags.B.uart_read){
+        //Get the data from the GPS
+        gps_get_GNRMC(&gGps);
+        led_on(&gLed, 0x02); //Led on green
+
+        //enable the UART read interruption
+        uart_set_irq_enables(gGps.uart, true, false);
+        //Clear the flag
+        gFlags.B.uart_read = 0;
     }
 }
 

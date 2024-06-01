@@ -25,8 +25,9 @@
 
 int main() {
     stdio_init_all();
-    sleep_ms(5000);
+    sleep_ms(1000);
     printf("Run Program\n");
+    
 
     // Initialize global variables
     initGlobalVariables();
