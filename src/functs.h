@@ -23,11 +23,16 @@ typedef union{
         uint8_t wait         :1; ///<  Button interruption pending: power on the system
         uint8_t meas         :1; ///< Button interruption pending: start the measurement
         uint8_t error        :1; ///< Button interruption pending: error
-        uint8_t mphone_dma      :1; ///< DMA interruption pending
-        uint8_t                 :4;
+        uint8_t mphone_dma   :1; ///< DMA interruption pending
+        uint8_t uart_read    :1; //uart read interruption pending
+        uint8_t              :3;
     }B;
 }flags_t;
 
+/**
+ * @brief This typedef indicates the global system state.
+ * @typedef system_t
+ */
 typedef struct _system_t{
     enum{
         DORMANT,    ///< The system is not doing anything (no led)
@@ -100,6 +105,7 @@ void gpioCallback(uint num, uint32_t mask);
 void led_timer_handler(void);
 
 /**
+
  * @brief Handler for the check timer
  * 
  */
@@ -117,6 +123,11 @@ void dma_handler(void);
  */
 void pwm_handler(void);
 
+/*
+ * @brief Handler for the UART read pending interruption
+ * 
+ */
+void uart_read_handler(void);
 
 
 #endif // __FUNTCS_

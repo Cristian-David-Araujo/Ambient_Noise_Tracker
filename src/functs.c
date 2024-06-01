@@ -40,6 +40,7 @@ led_rgb_t gLed;         ///< Global variable that stores the led information
 flags_t gFlags;         ///< Global variable that stores the flags of the interruptions pending
 gpio_button_t gButton;  ///< Global variable that stores the button information
 mphone_t gMphone;       ///< Global variable that stores the microphone information
+gps_t gGps; ///< Global variable the structure of the GPS
 
 void initGlobalVariables(void)
 {
@@ -210,6 +211,11 @@ void led_timer_handler(void)
         gSystem.state = DORMANT; ///< The system is going to DORMANT state
     }
 
+
+void uart_read_handler(void)
+{
+    gFlags.B.uart_read = 1;
+    gGps.data_available = true;
 }
 
 void check_timer_handler(void)
