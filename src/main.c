@@ -18,10 +18,11 @@
 #include "pico/stdlib.h"
 #include "hardware/irq.h"
 #include "hardware/sync.h"
-#include "hardware/i2c.h"
+#include "hardware/rosc.h"
 
 #include "functs.h"
 
+extern system_t gSystem;
 
 int main() {
     stdio_init_all();
@@ -35,13 +36,16 @@ int main() {
     initPWMasPIT(0, 100, false);     // 2ms for the secuence generation
     irq_set_exclusive_handler(PWM_IRQ_WRAP, pwm_handler);
 
-
     while(1){
         while(check()){
             program();
         }
-        __wfi(); // Wait for interrupt (Will put the processor into deep sleep until woken by the RTC interrupt)
-        // xosc_dormant();
+        if (gSystem.state == DORMANT)
+            rosc_set_dormant();
+        else 
+            __wfi(); // Wait for interrupt (Will put the processor into deep sleep until woken by the RTC interrupt)
+        
+        
     }
 }
 

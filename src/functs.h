@@ -26,6 +26,17 @@ typedef union{
     }B;
 }flags_t;
 
+typedef struct _system_t{
+    enum{
+        DORMANT,    ///< The system is not doing anything (no led)
+        WAIT,       ///< The system is waiting for the GPS to hook (red led blinking)
+        READY,      ///< GPS is hooked and the system is ready to measure (green led)
+        MEASURE,    ///< The system is measuring the noise for 10s (yellow led)
+        DONE,       ///< The system has finished the measurement and is sending the data (orange led)
+        ERROR       ///< An anomaly has occurred (red led for 3s)
+    } state;
+} system_t;
+
 /**
  * @brief This function initializes the global variables of the system: keypad, signal generator, button, and DAC.
  * 
@@ -58,6 +69,16 @@ void program(void);
  */
 bool check();
 
+/**
+ * @brief This function configures the clocks of the system.
+ * Comparably to sleep_run_from_dormant_source() function, this function configures the system to run from the ROSC.
+ * As said on the RP2040 datasheet, pag. 180: 
+ *          For very low cost or low power applications where precise timing is not required, the chip can be run 
+ *          from the internal Ring Oscillator (ROSC)
+ * 
+ */
+void clock_config(void);
+
 // -------------------------------------------------------------
 // ---------------- Callback and handler functions -------------
 // -------------------------------------------------------------
@@ -88,6 +109,12 @@ void dma_handler(void);
  * 
  */
 void pwm_handler(void);
+
+/**
+ * @brief Show the frecuencies of all clock sources
+ * 
+ */
+void measure_freqs(void);
 
 
 
