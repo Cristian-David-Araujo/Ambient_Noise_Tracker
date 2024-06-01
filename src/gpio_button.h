@@ -15,6 +15,7 @@
 #include "hardware/timer.h"
 #include "hardware/gpio.h"
 #include "hardware/irq.h"
+#include "hardware/pwm.h"
 
 #include "functs.h"
 
@@ -83,6 +84,14 @@ static inline void button_clr_zflag(gpio_button_t *button){
  */
 static inline bool button_is_2nd_zero(gpio_button_t *button){
     return button->KEY.dzero;
+}
+
+static inline void button_setup_pwm_dbnc(gpio_button_t *button)
+{
+    pwm_set_enabled(0, true); ///< Enable the button debouncer
+    button_set_irq_enabled(button, false); ///< Disable the button IRQs
+    button_set_zflag(button); ///< Set the flag that indicates that a zero was detected on button
+    button->KEY.dbnc = 1;       ///< Set the flag that indicates that debouncer is active
 }
 
 #endif // __GPIO_BUTTON_

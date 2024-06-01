@@ -28,6 +28,9 @@
 #include "gps.h"
 #include "microphone.h"
 
+#define SYSTEM_CLK_HZ 6.5*MHZ
+#define SYSTEM_CLK_KHZ 6500
+
 #define BUTTON_GPIO 10
 #define LED_GPIO 0
 #define MPHONE_GPIO 26
@@ -54,10 +57,10 @@ void initGlobalVariables(void)
 void initPWMasPIT(uint8_t slice, uint16_t milis, bool enable)
 {
     assert(milis<=262);                  // PWM can manage interrupt periods greater than 262 milis
-    float prescaler = (float)SYS_CLK_KHZ/500;
+    float prescaler = (float)SYSTEM_CLK_KHZ/500;
     assert(prescaler<256); // the integer part of the clock divider can be greater than 255 
                  // ||   counter frecuency    ||| Period in seconds taking into account de phase correct mode |||   
-    uint32_t wrap = (1000*SYS_CLK_KHZ*milis/(prescaler*2*1000)); // 500000*milis/2000
+    uint32_t wrap = (1000*SYSTEM_CLK_KHZ*milis/(prescaler*2*1000)); // 500000*milis/2000
     assert(wrap<((1UL<<17)-1));
     // Configuring the PWM
     pwm_config cfg =  pwm_get_default_config();
@@ -72,11 +75,25 @@ void initPWMasPIT(uint8_t slice, uint16_t milis, bool enable)
 
 void program(void)
 {
-    if (gFlags.B.button){
-        gFlags.B.button = 0;
-        printf("Key interruption\n");
+    if (gFlags.B.bt_wait){
+        gFlags.B.bt_wait = 0;
+        printf("Button interruption\n");
+        gLed.time = 1000000;    ///< 1s
+        led_setup_red(&gLed);   ///< Red led
+    }
+    if (gFlags.B.bt_meas){
+        gFlags.B.bt_meas = 0;
+        printf("Button interruption\n");
+        gLed.time = 1000000;    ///< 1s
+        led_setup_yellow(&gLed);///< Yellow led
         gSystem.state = MEASURE;         ///< The system is measuring the noise
         mphone_dma_trigger(&gMphone);   ///< Start the DMA for the microphone
+    }
+    if (gFlags.B.bt_error){
+        gFlags.B.bt_error = 0;
+        printf("Button interruption\n");
+        gLed.time = 3000000;    ///< 3s
+        led_setup_red(&gLed);   ///< Red led
     }
     if (gFlags.B.mphone_dma){
         gFlags.B.mphone_dma = 0;
@@ -106,19 +123,18 @@ void clock_config(void)
     ///< Print the frequencies of the clocks
     measure_freqs();
     ///< Reference Clock configuration
-    uint src_hz = 6.5*MHZ;
     clock_configure(clk_ref, 
                     CLOCKS_CLK_REF_CTRL_SRC_VALUE_ROSC_CLKSRC_PH, // CLOCKS_CLK_REF_CTRL_SRC_VALUE_ROSC_CLKSRC_PH
                     0, ///< No aux mux
-                    src_hz,
-                    src_hz);
+                    SYSTEM_CLK_HZ,
+                    SYSTEM_CLK_HZ);
 
     ///< Sys Clock configuration
     clock_configure(clk_sys, 
                     CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLK_REF, // CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLK_REF
                     0, ///< Using glitchless mux
-                    src_hz,
-                    src_hz);
+                    SYSTEM_CLK_HZ,
+                    SYSTEM_CLK_HZ);
     
     ///< CLK USB = 0MHz
     clock_stop(clk_usb);
@@ -130,15 +146,15 @@ void clock_config(void)
     clock_configure(clk_adc, 
                     0,
                     CLOCKS_CLK_ADC_CTRL_AUXSRC_VALUE_ROSC_CLKSRC_PH,
-                    src_hz,
-                    src_hz);
+                    SYSTEM_CLK_HZ,
+                    SYSTEM_CLK_HZ);
 
     ///< Peri Clock configuration
     clock_configure(clk_peri, 
                     0,                                          // CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLK_SYS
                     CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_ROSC_CLKSRC_PH,  // CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_ROSC_CLKSRC_PH
-                    src_hz,
-                    src_hz);
+                    SYSTEM_CLK_HZ,
+                    SYSTEM_CLK_HZ);
 
     pll_deinit(pll_sys);
     pll_deinit(pll_usb);
@@ -155,42 +171,52 @@ void clock_config(void)
 
 void gpioCallback(uint num, uint32_t mask) 
 {
-    if (num == gLed.gpio_num && gSystem.state == WAIT){
-        gLed.state = !gLed.state;
-        led_setup_red(&gLed);
-    }
-    ///< Start measuring the noise when the button is pressed and the system is ready
-    if (num == gButton.KEY.gpio_num && gSystem.state == READY){
-        pwm_set_enabled(0, true); ///< Enable the button debouncer
-        button_set_irq_enabled(&gButton, false); ///< Disable the button IRQs
-        button_set_zflag(&gButton); ///< Set the flag that indicates that a zero was detected on button
-        gButton.KEY.dbnc = 1; ///< Set the flag that indicates that debouncer is active
-    }
-    ///< Stop measuring the noise when the button is pressed and the system is measuring. Red led will be on for 3s
-    else if (num == gButton.KEY.gpio_num && gSystem.state == MEASURE) {
-        gSystem.state = ERROR; ///< An anomaly has occurred
-        gLed.time = 3000000; ///< 3s
-        led_setup_green(&gLed);
+    if (num == gButton.KEY.gpio_num) {
+        switch (gSystem.state)
+        {
+        case DORMANT: ///< Start the system when the button is pressed and the system is dormant. Like a power on button
+            gSystem.state = WAIT;   ///< The system is waiting for the GPS to be hooked.
+            button_setup_pwm_dbnc(&gButton); ///< Debounce setup
+            break;
+
+        case READY: ///< Start measuring the noise when the button is pressed and the system is ready
+            gSystem.state = MEASURE; ///< The system is measuring the noise
+            button_setup_pwm_dbnc(&gButton); ///< Debounce setup
+            break;
+
+        case MEASURE: ///< Stop measuring the noise when the button is pressed and the system is measuring. 
+            gSystem.state = ERROR; ///< An anomaly has occurred
+            button_setup_pwm_dbnc(&gButton); ///< Debounce setup
+            break;
+        }
     }
     
     gpio_acknowledge_irq(num, mask); ///< gpio IRQ acknowledge
 }
 
-
 void led_timer_handler(void)
 {
-    // Set the alarm
+    // Aknowledge the interrupt
     hw_clear_bits(&timer_hw->intr, 1u << gLed.timer_irq);
 
     if (gSystem.state == WAIT){
-        gLed.state = !gLed.state;
-        led_setup_red(&gLed);
+        gLed.state = !gLed.state; ///< Toggle the led state
+        led_setup_red(&gLed); ///< Red led is setting continuously in WAIT state
     }
-    else if (gSystem.state == READY || gSystem.state == MEASURE || gSystem.state == DONE || gSystem.state == ERROR) {
+    else if (gSystem.state == READY || gSystem.state == MEASURE) {
         led_off(&gLed);
         irq_set_enabled(gLed.timer_irq, false); ///< Disable the led timer
     }
+    else if (gSystem.state == DONE || gSystem.state == ERROR){
+        led_off(&gLed);
+        irq_set_enabled(gLed.timer_irq, false); ///< Disable the led timer
+        gSystem.state = DORMANT; ///< The system is going to DORMANT state
+    }
 
+}
+
+void check_timer_handler(void)
+{
 }
 
 void dma_handler(void)
@@ -210,8 +236,19 @@ void pwm_handler(void)
             if(!button){
                 button_set_irq_enabled(&gButton, true); ///< Enable the GPIO IRQs
                 pwm_set_enabled(0, false);      ///< Disable the button debouncer
-                gFlags.B.button = 1;
                 gButton.KEY.dbnc = 0;
+                switch (gSystem.state)
+                {
+                case WAIT:
+                    gFlags.B.bt_wait = 1; ///< The systen just power on and is waiting for the GPS to hook
+                    break;
+                case MEASURE:
+                    gFlags.B.bt_meas = 1; ///< Start the measurement
+                    break;
+                case ERROR:
+                    gFlags.B.bt_error = 1; ///< An anomaly has occurred
+                    break;
+                }
             }
             else
                 button_clr_zflag(&gButton);

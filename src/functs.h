@@ -20,9 +20,11 @@
 typedef union{
     uint8_t W;
     struct{
-        uint8_t button      :1; //Button interruption pending
-        uint8_t mphone_dma  :1; //DMA interruption pending
-        uint8_t             :3;
+        uint8_t bt_wait         :1; ///<  Button interruption pending: power on the system
+        uint8_t bt_meas         :1; ///< Button interruption pending: start the measurement
+        uint8_t bt_error        :1; ///< Button interruption pending: error
+        uint8_t mphone_dma      :1; ///< DMA interruption pending
+        uint8_t                 :3;
     }B;
 }flags_t;
 
@@ -79,6 +81,12 @@ bool check();
  */
 void clock_config(void);
 
+/**
+ * @brief Show the frecuencies of all clock sources
+ * 
+ */
+void measure_freqs(void);
+
 // -------------------------------------------------------------
 // ---------------- Callback and handler functions -------------
 // -------------------------------------------------------------
@@ -99,6 +107,12 @@ void gpioCallback(uint num, uint32_t mask);
 void led_timer_handler(void);
 
 /**
+ * @brief Handler for the check timer
+ * 
+ */
+void check_timer_handler(void);
+
+/**
  * @brief Handler for the DMA interruption
  * 
  */
@@ -109,12 +123,6 @@ void dma_handler(void);
  * 
  */
 void pwm_handler(void);
-
-/**
- * @brief Show the frecuencies of all clock sources
- * 
- */
-void measure_freqs(void);
 
 
 
