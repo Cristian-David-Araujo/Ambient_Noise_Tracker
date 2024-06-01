@@ -25,12 +25,21 @@
 #include "gpio_button.h"
 #include "gps.h"
 #include "microphone.h"
+#include "liquid_crystal_i2c.h"
 
+// I2C pins
+#define PIN_SDA 14
+#define PIN_SCL 15
+
+//UART GPS Pins
+#define GPS_TX 5
+#define GPS_RX 4
 
 led_rgb_t gLed;
 
 flags_t gFlags; ///< Global variable that stores the flags of the interruptions pending
 gps_t gGps; ///< Global variable the structure of the GPS
+lcd_t gLcd; ///< Global variable the structure of the LCD
 
 void initGlobalVariables(void)
 {
@@ -39,7 +48,9 @@ void initGlobalVariables(void)
 
     //Initialize the modules
     led_init(&gLed, 18);
-    gps_init(&gGps, uart1, 5, 4, 115200);
+    gps_init(&gGps, uart1, GPS_TX, GPS_RX, 115200);
+
+    lcd_init(&gLcd, 0x20, i2c1, 16, 2, 100, PIN_SDA, PIN_SCL);
     
     led_on(&gLed, 0x04); //Led on red
 }
@@ -118,8 +129,22 @@ void program(void)
 
         //enable the UART read interruption
         uart_set_irq_enables(gGps.uart, true, false);
+        
+        //Show the data on the LCD
+        uint8_t str_0[16]; ///< Line 0 of the LCD
+
+        //Clear the LCD
+        lcd_send_str_cursor(&gLcd, "                ", 0, 0);
+        lcd_send_str_cursor(&gLcd, "                ", 1, 0);
+        sprintf((char *)str_0, "Lat: %f", gGps.latitude);
+        lcd_send_str_cursor(&gLcd, (char *)str_0, 0, 0);
+        sprintf((char *)str_0, "Lon: %f", gGps.longitude);
+        lcd_send_str_cursor(&gLcd, (char *)str_0, 1, 0);
+
+
         //Clear the flag
         gFlags.B.uart_read = 0;
+        
     }
 }
 

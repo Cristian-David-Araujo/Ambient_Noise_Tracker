@@ -1,14 +1,5 @@
 #include "gps.h"
 
-//Constants for the GPS module
-char const Temp[16]={'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
-static const double pi = 3.14159265358979324;
-static const double a = 6378245.0;
-static const double ee = 0.00669342162296594323;
-static const double x_pi = 3.14159265358979324 * 3000.0 / 180.0;
-
-
-
 void gps_init(gps_t *gps, uart_inst_t *uart, uint8_t rx, uint8_t tx, uint32_t baudrate)
 {
     // Initialize the GPS module
@@ -128,7 +119,7 @@ void gps_get_GNRMC(gps_t *gps)
         token = strtok(NULL, ",");
         field_index++;
     }
-    
+
     printf("Time: %d:%d:%d\n", gps->time_h, gps->time_m, gps->time_s);
     printf("Status: %d\n", gps->status);
     printf("Latitude: %f %c\n", gps->latitude, gps->latitude_area);
