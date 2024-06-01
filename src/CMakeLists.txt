@@ -31,8 +31,15 @@ target_link_libraries(tracker
 	hardware_pwm 
 	hardware_irq 
 	hardware_sync
-	hardware_i2c
-	hardware_spi)
+	hardware_adc
+	hardware_uart
+	hardware_dma
+	hardware_sleep
+	hardware_clocks
+	hardware_pwm
+	hardware_xosc
+	hardware_rosc
+	)
 
 pico_enable_stdio_uart(tracker 0)
 pico_enable_stdio_usb(tracker 1)

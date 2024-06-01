@@ -20,14 +20,30 @@
 typedef union{
     uint8_t W;
     struct{
-        uint8_t key         :1; //keypad interruption pending
-        uint8_t nfc         :1; //tag interruption pending
-        uint8_t kpad_cols   :1; //keypad cols interruption pending
-        uint8_t kpad_rows   :1; //keypad rows interruption pending
-        uint8_t uart_read   :1; //uart read interruption pending
-        uint8_t             :3; //reserved
+        uint8_t wait         :1; ///<  Button interruption pending: power on the system
+        uint8_t meas         :1; ///< Button interruption pending: start the measurement
+        uint8_t error        :1; ///< Button interruption pending: error
+        uint8_t mphone_dma   :1; ///< DMA interruption pending
+        uint8_t uart_read    :1; //uart read interruption pending
+        uint8_t              :3;
     }B;
 }flags_t;
+
+/**
+ * @brief This typedef indicates the global system state.
+ * @typedef system_t
+ */
+typedef struct _system_t{
+    enum{
+        DORMANT,    ///< The system is not doing anything (no led)
+        WAIT,       ///< The system is waiting for the GPS to hook (red led blinking)
+        READY,      ///< GPS is hooked and the system is ready to measure (green led)
+        MEASURE,    ///< The system is measuring the noise for 10s (yellow led)
+        DONE,       ///< The system has finished the measurement and is sending the data (orange led)
+        ERROR       ///< An anomaly has occurred (red led for 3s)
+    } state;
+    bool dma_transfer_done; ///< Flag to indicate that the DMA transfer is done
+} system_t;
 
 /**
  * @brief This function initializes the global variables of the system: keypad, signal generator, button, and DAC.
@@ -36,18 +52,38 @@ typedef union{
 void initGlobalVariables(void);
 
 /**
+ * @brief This function initializes a PWM signal as a periodic interrupt timer (PIT).
+ * Each slice will generate interruptions at a period of milis miliseconds.
+ * Due to each slice share clock counter (period), events with diferents periods 
+ * must not be generated in the same slice, i.e, they must not share channel.
+ * 
+ * @param slice 
+ * @param milis Period of the PWM interruption in miliseconds
+ * @param enable 
+ */
+void initPWMasPIT(uint8_t slice, uint16_t milis, bool enable);
+
+/**
  * @brief This function is the main, here the program is executed when a flag of interruption is pending.
  * 
  */
 void program(void);
 
 /**
- * @brief This function checks if there are a flag of interruption pending for execute the program.
+ * @brief This function configures the clocks of the system.
+ * Comparably to sleep_run_from_dormant_source() function, this function configures the system to run from the ROSC.
+ * As said on the RP2040 datasheet, pag. 180: 
+ *          For very low cost or low power applications where precise timing is not required, the chip can be run 
+ *          from the internal Ring Oscillator (ROSC)
  * 
- * @return true When there are a flag of interruption pending
- * @return false When there are not a flag of interruption pending
  */
-bool check();
+void clock_config(void);
+
+/**
+ * @brief Show the frecuencies of all clock sources
+ * 
+ */
+void measure_freqs(void);
 
 // -------------------------------------------------------------
 // ---------------- Callback and handler functions -------------
@@ -69,11 +105,29 @@ void gpioCallback(uint num, uint32_t mask);
 void led_timer_handler(void);
 
 /**
+
+ * @brief Handler for the check timer
+ * 
+ */
+void check_timer_handler(void);
+
+/**
+ * @brief Handler for the DMA interruption
+ * 
+ */
+void dma_handler(void);
+
+/**
+ * @brief Handler for the PWM interruption
+ * 
+ */
+void pwm_handler(void);
+
+/*
  * @brief Handler for the UART read pending interruption
  * 
  */
 void uart_read_handler(void);
-
 
 
 #endif // __FUNTCS_

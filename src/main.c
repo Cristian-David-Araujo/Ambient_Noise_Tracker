@@ -18,10 +18,12 @@
 #include "pico/stdlib.h"
 #include "hardware/irq.h"
 #include "hardware/sync.h"
-#include "hardware/i2c.h"
+#include "hardware/rosc.h"
 
 #include "functs.h"
 
+extern system_t gSystem;
+extern flags_t gFlags;
 
 int main() {
     stdio_init_all();
@@ -31,12 +33,20 @@ int main() {
     // Initialize global variables
     initGlobalVariables();
 
+    // PWM configuration
+    initPWMasPIT(0, 100, false);     // 100ms for the button debounce
+    irq_set_exclusive_handler(PWM_IRQ_WRAP, pwm_handler);
 
     while(1){
-        while(check()){
+        while(gFlags.W){
             program();
         }
-        __wfi(); // Wait for interrupt (Will put the processor into deep sleep until woken by the RTC interrupt)
+        if (gSystem.state == DORMANT)
+            rosc_set_dormant();
+        else 
+            __wfi(); // Wait for interrupt (Will put the processor into deep sleep until woken by the RTC interrupt)
+        
+        
     }
 }
 
