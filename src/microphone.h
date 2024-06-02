@@ -41,7 +41,8 @@ typedef struct _mphone_t{
     uint8_t dma_irq;
     uint8_t adc_irq;
     uint32_t sample;
-    uint8_t gpio_num;
+    uint8_t gpio_num; ///< GPIO number of the microphone input.
+    uint8_t en_gpio; ///< GPIO to enable the microphone.
     uint16_t adc_buffer[MPHONE_SIZE_BUFFER];
     double lat[MPHONE_SIZE_SPL]; ///< SPL array to store the Latitude values of each SPL value.
     double lon[MPHONE_SIZE_SPL]; ///< SPL array to store the Longitude values of each SPL value.
@@ -61,7 +62,7 @@ typedef struct _mphone_t{
  * @param gpio_num must be between 26 and 29.
  * @param sample sample rate in Hz for the ADC.
  */
-void mphone_init(mphone_t *mphone, uint8_t gpio_num, uint32_t sample);
+void mphone_init(mphone_t *mphone, uint8_t gpio_num, uint32_t sample, uint8_t en_gpio);
 
 /**
  * @brief Trigger the DMA to start the data transfer.
@@ -109,6 +110,29 @@ void mphone_load_print_spl_location(mphone_t *mphone);
 static inline void mphone_wrapper()
 {
     flash_range_erase((PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE), FLASH_SECTOR_SIZE);
+}
+/**
+ * @brief Enable the microphone. In this case, the microphone is enabled by setting the EN pin to 0.
+ * It is using a PNP transistor to enable the microphone.
+ * 
+ * @param mphone 
+ */
+static inline void mphone_enable(mphone_t *mphone)
+{
+    gpio_put(mphone->en_gpio, 0);
+    mphone->en = true;
+}
+
+/**
+ * @brief Disable the microphone. In this case, the microphone is disabled by setting the EN pin to 1.
+ * It is using a PNP transistor to enable the microphone.
+ * 
+ * @param mphone 
+ */
+static inline void mphone_disable(mphone_t *mphone)
+{
+    gpio_put(mphone->en_gpio, 1);
+    mphone->en = false;
 }
 
 #endif // __MICROPHONE_H__

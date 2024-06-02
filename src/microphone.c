@@ -16,18 +16,24 @@
 
 #include "functs.h"
 
-void mphone_init(mphone_t *mphone, uint8_t gpio_num, uint32_t sample)
+void mphone_init(mphone_t *mphone, uint8_t gpio_num, uint32_t sample, uint8_t en_gpio)
 {
     ///< Initialize the microphone structure
     mphone->gpio_num = gpio_num;
+    mphone->en_gpio = en_gpio;
     mphone->spl_index = 0;
     mphone->en = false;
     mphone->dma_irq = 0;
     mphone->adc_chan = 26 - gpio_num; ///< channel 0 is GPIO 26, channel 1 is GPIO 27, etc.
     mphone->sample = sample;
 
+    ///< Initialize the GPIO
+    gpio_init(en_gpio);
+    gpio_set_dir(en_gpio, GPIO_OUT);
+    gpio_put(en_gpio, 1); ///< active low
+
     ///< Initialize the ADC
-    adc_gpio_init(26 + mphone->adc_chan);
+    adc_gpio_init(gpio_num);
     adc_init();
     adc_set_clkdiv(6.5*MHZ/sample); ///< Set the ADC clock to the sample rate
     adc_select_input(mphone->adc_chan); ///< Select the ADC channel
