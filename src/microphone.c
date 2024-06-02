@@ -67,17 +67,17 @@ void mphone_init(mphone_t *mphone, uint8_t gpio_num, uint32_t sample)
     mphone_load_print_spl_location(mphone);
 }
 
-void mphone_calculate_spl(mphone_t *mphone, float_t lat, float_t lon)
+void mphone_calculate_spl(mphone_t *mphone)
 {
-    float sum = 0;
+    uint32_t sum = 0;
     for (uint8_t i = 0; i < MPHONE_SIZE_BUFFER; i++)
     {
         sum += mphone->adc_buffer[i];
     }
-    sum = sum/MPHONE_SIZE_BUFFER;
+    double avg = sum/MPHONE_SIZE_BUFFER;
     mphone->spl[mphone->spl_index] = 20*pow(log10(sum/REF_PRESSURE), 2);
-    mphone->lat[mphone->spl_index] = lat;
-    mphone->lon[mphone->spl_index] = lon;
+    mphone->lat[mphone->spl_index] = mphone->lat_v;
+    mphone->lon[mphone->spl_index] = mphone->lon_v;
 }
 
 void mphone_store_spl_location(mphone_t *mphone)
@@ -109,9 +109,10 @@ void mphone_load_print_spl_location(mphone_t *mphone)
 
     // Load the inventory from the flash memory
     printf("SPL, Latitude, Longitude\n");
-    for (int i = 0; i < MPHONE_SIZE_SPL;){///< Casting? (uint32_t)
-        mphone->spl[i] = ptr[i]; printf("%f, ", mphone->spl[i]); i++;
-        mphone->lat[i] = ptr[i]; printf("%f, ", mphone->lat[i]); i++;
-        mphone->lon[i] = ptr[i]; printf("%f\n", mphone->lon[i]); i++;
-    }
+    // for (int i = 0; i < 3*MPHONE_SIZE_SPL;){///< Casting? (uint32_t)
+    //     mphone->spl[i] = ptr[i]; printf("%f, ", mphone->spl[i]); i++;
+    //     mphone->lat[i] = ptr[i]; printf("%f, ", mphone->lat[i]); i++;
+    //     mphone->lon[i] = ptr[i]; printf("%f\n", mphone->lon[i]); i++;
+    // }
+    printf("End\n");
 }

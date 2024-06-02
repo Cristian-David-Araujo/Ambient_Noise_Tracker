@@ -19,6 +19,7 @@
 #include "hardware/irq.h"
 #include "hardware/sync.h"
 #include "hardware/rosc.h"
+#include "hardware/xosc.h"
 
 #include "functs.h"
 
@@ -41,9 +42,12 @@ int main() {
         while(gFlags.W){
             program();
         }
-        if (gSystem.state == DORMANT)
-            rosc_set_dormant();
-        else 
+        // if (gSystem.state == DORMANT){
+        //     printf("Pre DORMANT");
+        //     xosc_dormant();
+        //     printf("Post DORMANT");
+        // }
+        // else 
             __wfi(); // Wait for interrupt (Will put the processor into deep sleep until woken by the RTC interrupt)
         
         
