@@ -42,7 +42,6 @@ typedef struct _system_t{
         DONE,       ///< The system has finished the measurement and is sending the data (orange led)
         ERROR       ///< An anomaly has occurred (red led for 3s)
     } state;
-    bool dma_transfer_done; ///< Flag to indicate that the DMA transfer is done
 } system_t;
 
 /**
@@ -103,13 +102,6 @@ void gpioCallback(uint num, uint32_t mask);
 
  */
 void led_timer_handler(void);
-
-/**
-
- * @brief Handler for the check timer
- * 
- */
-void check_timer_handler(void);
 
 /**
  * @brief Handler for the DMA interruption

@@ -59,10 +59,10 @@ void gps_send_command(gps_t *gps, char *command)
     check_char[1] = (checksum & 0x0F) < 10 ? (checksum & 0x0F) + '0' : (checksum & 0x0F) - 10 + 'A';
 
     // Send command and checksum
-    uart_write(uart0, (const uint8_t *)command, strlen(command));
-    uart_write(uart0, (const uint8_t *)"*", 1);
-    uart_write(uart0, (const uint8_t *)check_char, 2);
-    uart_write(uart0, (const uint8_t *)"\r\n", 2);
+    uart_write(uart0, (uint8_t *)command, strlen(command));
+    uart_write(uart0, (uint8_t *)"*", 1);
+    uart_write(uart0, (uint8_t *)check_char, 2);
+    uart_write(uart0, (uint8_t *)"\r\n", 2);
 
     // Wait for the response of the GPS module for 200ms min
 }

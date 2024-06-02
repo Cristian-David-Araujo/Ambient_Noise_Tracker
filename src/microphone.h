@@ -14,6 +14,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <math.h>
+#include <float.h>
 #include "pico/stdlib.h"
 #include "hardware/adc.h"
 #include "hardware/dma.h"
@@ -22,8 +23,9 @@
 #include "hardware/sync.h"
 #include "pico/flash.h"
 
-#define MPHONE_SIZE_BUFFER 256
-#define MPHONE_SIZE_SPL 10 ///< Size of the Sound Pressure Level array.
+#define MPHONE_SIZE_BUFFER 5120 ///< Size of the ADC buffer.
+#define MPHONE_SIZE_SPL 50 ///< Size of the Sound Pressure Level array.
+#define MPHONE_SAMPLES_PER_PLACE 10 ///< Number of samples to calculate the SPL in one place.
 #define FLASH_TARGET_OFFSET (PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE) ///< Flash-based address of the last sector
 #define REF_PRESSURE 0.000020
 
@@ -41,8 +43,12 @@ typedef struct _mphone_t{
     uint32_t sample;
     uint8_t gpio_num;
     uint16_t adc_buffer[MPHONE_SIZE_BUFFER];
-    float spl[10];
-    uint8_t spl_index;
+    float_t lat[MPHONE_SIZE_SPL]; ///< SPL array to store the Latitude values of each SPL value.
+    float_t lon[MPHONE_SIZE_SPL]; ///< SPL array to store the Longitude values of each SPL value.
+    float_t spl[MPHONE_SIZE_SPL];
+    uint8_t spl_index; ///< Index of the SPL array. It is going to count up to MPHONE_SIZE_SPL.
+    uint32_t dma_time; ///< Time which takes the DMA to transfer the data.
+    bool dma_done; ///< Flag to indicate that the DMA has finished the transfer.
     bool en;
 }mphone_t;
 
@@ -74,15 +80,24 @@ static inline void mphone_dma_trigger(mphone_t *mphone)
  * where Pa is the ponderated pressure, and Pref is the reference pressure, 20uPa.
  * 
  * @param mphone 
+ * @param lat Latitude of the place where the SPL was measured.
+ * @param lon Longitude of the place where the SPL was measured.
  */
-void mphone_calculate_spl(mphone_t *mphone);
+void mphone_calculate_spl(mphone_t *mphone, float_t lat, float_t lon);
 
 /**
  * @brief Store the SPL array in non-volatile memory.
  * 
  * @param mphone 
  */
-void mphone_store_spl(mphone_t *mphone);
+void mphone_store_spl_location(mphone_t *mphone);
+
+/**
+ * @brief Load and print all the information (SPL, Latitude, Longitud) from non-volatile memory.
+ * 
+ * @param mphone 
+ */
+void mphone_load_print_spl_location(mphone_t *mphone);
 
 /**
  * @brief Definition of the wrapper function for the flash_safe_execute function,
