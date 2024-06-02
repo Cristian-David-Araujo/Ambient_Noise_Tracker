@@ -40,6 +40,7 @@ target_link_libraries(tracker
 	hardware_pwm
 	hardware_xosc
 	hardware_rosc
+	hardware_i2c
 	)
 
 pico_enable_stdio_uart(tracker 0)

@@ -62,7 +62,7 @@ void initGlobalVariables(void)
     gFlags.W = 0;
 
     //Initialize the modules
-    led_init(&gLed, 18);
+    led_init(&gLed, 18, 1000000); //Led on green
     lcd_refresh_handler();
 
     gps_init(&gGps, uart1, GPS_TX, GPS_RX, 9600);
