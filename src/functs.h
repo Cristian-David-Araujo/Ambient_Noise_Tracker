@@ -25,7 +25,8 @@ typedef union{
         uint8_t kpad_cols   :1; //keypad cols interruption pending
         uint8_t kpad_rows   :1; //keypad rows interruption pending
         uint8_t uart_read   :1; //uart read interruption pending
-        uint8_t             :3; //reserved
+        uint8_t refresh_lcd :1; //refresh lcd interruption pending
+        uint8_t             :2; //Reserved
     }B;
 }flags_t;
 
@@ -67,6 +68,12 @@ void gpioCallback(uint num, uint32_t mask);
 
  */
 void led_timer_handler(void);
+
+/**
+ * @brief Handler for refresh the LCD
+ * 
+ */
+void lcd_refresh_handler(void);
 
 /**
  * @brief Handler for the UART read pending interruption

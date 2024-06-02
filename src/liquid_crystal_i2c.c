@@ -173,7 +173,7 @@ void lcd_initialization_timer_handler(void)
     {
     case 0:
         lcd_send_byte(&gLcd, 0x03, LCD_COMMAND);
-        time_next_secuence_us = 5000;
+        time_next_secuence_us = 8000;
         break;
     case 1:
         lcd_send_byte(&gLcd, 0x03, LCD_COMMAND);

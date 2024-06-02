@@ -113,6 +113,12 @@ typedef struct
     double longitude;  //< Longitude
     uint8_t longitude_area; //< Longitude area (E or W)
     uint8_t latitude_area;  //< Latitude area (N or S) 
+
+    uint8_t fix_quality;
+    uint8_t num_satellites;
+    uint16_t altitude;
+
+    bool valid;  //< Valid position (1: Valid, 0: Invalid)
 }gps_t;
 
 
@@ -139,6 +145,20 @@ void gps_send_command(gps_t *gps, char *command);
  */
 void gps_get_GNRMC(gps_t *gps);
 
+/**
+ * @brief Get the data from the GPS module and store it in the buffer (GNGGA sentence)
+ * 
+ * @param gps GPS structure with the configuration
+ */
+void gps_get_GPGGA(gps_t *gps);
+
+/**
+ * @brief Check the data from the GPS module if it valide, IF data is valid the atributtes of the GPS structure /ref valid is true
+ * 
+ * @param gps GPS structure with the configuration
+ */
+void gps_check_data(gps_t *gps);
+
 /*! \brief  Read from the UART witout blocking
  *  \ingroup hardware_uart
  *
@@ -161,4 +181,10 @@ void uart_read(uart_inst_t *uart, uint8_t *data, uint16_t len);
  */
 void uart_write(uart_inst_t *uart, uint8_t *data, uint16_t len);
 
+/**
+ * @brief Clear the FIFO of the UART
+ * 
+ * @param uart 
+ */
+void uart_clear_FIFO(uart_inst_t *uart);
 #endif // __GPS_H__
