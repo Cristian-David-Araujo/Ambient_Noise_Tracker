@@ -17,6 +17,7 @@ add_executable(tracker
 	functs.c
 	gps.c
 	microphone.c
+	liquid_crystal_i2c.c
 )
 
 target_include_directories(tracker PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

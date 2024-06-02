@@ -27,7 +27,7 @@ extern flags_t gFlags;
 
 int main() {
     stdio_init_all();
-    sleep_ms(5000);
+    sleep_ms(3000);
     printf("Run Program\n");
 
     // Initialize global variables

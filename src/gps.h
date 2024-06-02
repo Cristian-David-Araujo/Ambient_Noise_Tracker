@@ -14,6 +14,7 @@
 #define __GPS_H__
 
 #include <stdint.h>
+#include <stdlib.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -95,22 +96,31 @@ typedef struct
     uart_inst_t *uart; //< UART instance (uart0 or uart1)
     uint8_t rx;  //< UART Pin number RX
     uint8_t tx;  //< UART Pin number TX
-    uint16_t baudrate;  //< Baudrate of the GPS module
+    uint32_t baudrate;  //< Baudrate of the GPS module
     bool status;  //< Avalibility GPS positions (1: Success, 0: Fail)
     bool data_available;  //< Data available in the UART
 
     // GPS data
     char buffer[GPS_BUFFSIZE];  //< Buffer for the GPS data
-    double latitude;  //< Latitude
-    double longitude;  //< Longitude
+    uint16_t buffer_index;  //< Index of the buffer
 
     uint8_t time_h;  //< Time hour
     uint8_t time_m;  //< Time minutes
     uint8_t time_s;  //< Time seconds
+    uint8_t time_ms;  //< Time milliseconds
 
+    double latitude;  //< Latitude
+    double longitude;  //< Longitude
     uint8_t longitude_area; //< Longitude area (E or W)
     uint8_t latitude_area;  //< Latitude area (N or S) 
+
+    uint8_t fix_quality;
+    uint8_t num_satellites;
+    uint16_t altitude;
+
+    bool valid;  //< Valid position (1: Valid, 0: Invalid)
 }gps_t;
+
 
 extern gps_t gGps;
 
@@ -118,7 +128,7 @@ extern gps_t gGps;
  * @brief This function initializes the GPS module L76X of WaveShare with the protocol NMEA 0183
  * 
  */
-void gps_init(gps_t *gps, uart_inst_t *uart, uint8_t rx, uint8_t tx, uint16_t baudrate);
+void gps_init(gps_t *gps, uart_inst_t *uart, uint8_t rx, uint8_t tx, uint32_t baudrate);
 
 /**
  * @brief Send a command to the GPS, automatically calculate the checksum
@@ -134,6 +144,20 @@ void gps_send_command(gps_t *gps, char *command);
  * @param gps GPS structure with the configuration
  */
 void gps_get_GNRMC(gps_t *gps);
+
+/**
+ * @brief Get the data from the GPS module and store it in the buffer (GNGGA sentence)
+ * 
+ * @param gps GPS structure with the configuration
+ */
+void gps_get_GPGGA(gps_t *gps);
+
+/**
+ * @brief Check the data from the GPS module if it valide, IF data is valid the atributtes of the GPS structure /ref valid is true
+ * 
+ * @param gps GPS structure with the configuration
+ */
+void gps_check_data(gps_t *gps);
 
 /*! \brief  Read from the UART witout blocking
  *  \ingroup hardware_uart
@@ -157,4 +181,10 @@ void uart_read(uart_inst_t *uart, uint8_t *data, uint16_t len);
  */
 void uart_write(uart_inst_t *uart, uint8_t *data, uint16_t len);
 
+/**
+ * @brief Clear the FIFO of the UART
+ * 
+ * @param uart 
+ */
+void uart_clear_FIFO(uart_inst_t *uart);
 #endif // __GPS_H__
