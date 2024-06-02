@@ -88,6 +88,7 @@ typedef struct{
     uint16_t baudrate;  ///< Baudrate in kHz for I2C communication
     uint8_t sda;        ///< SDA pin
     uint8_t scl;        ///< SCL pin
+    uint8_t en_gpio;    ///< Enable pin
     uint8_t display;    ///< Display state
     uint8_t cursor;     ///< Cursor state
     char *temp_message; ///< Temporary message buffer
@@ -113,8 +114,10 @@ extern lcd_t gLcd;
  * @param baudrate Frequency of the I2C communication in kHz
  * @param sda GPIO pin for SDA
  * @param scl GPIO pin for SCL
+ * @param en_gpio GPIO pin for the enable signal
  */
-void lcd_init(lcd_t *lcd, uint8_t addr, i2c_inst_t *i2c, uint8_t cols, uint8_t rows, uint16_t baudrate, uint8_t sda, uint8_t scl);
+void lcd_init(lcd_t *lcd, uint8_t addr, i2c_inst_t *i2c, uint8_t cols, uint8_t rows, 
+                uint16_t baudrate, uint8_t sda, uint8_t scl, uint8_t en_gpio);
 
 /**
  * @brief Quick helper function for single byte transfers
@@ -193,5 +196,25 @@ void lcd_send_str_callback(void);
  * 
  */
 void lcd_initialization_timer_handler(void);
+
+/**
+ * @brief Enable the LCD. In hardware there is a transistor to control the power of the LCD
+ * 
+ * @param lcd 
+ */
+static inline void lcd_enable(lcd_t *lcd)
+{
+    gpio_put(lcd->en_gpio, 0);
+}
+
+/**
+ * @brief Disable the LCD. In hardware there is a transistor to control the power of the LCD
+ * 
+ * @param lcd 
+ */
+static inline void lcd_disable(lcd_t *lcd)
+{
+    gpio_put(lcd->en_gpio, 1);
+}
 
 #endif // __LIQUID_CRYSTAL_I2C_H__

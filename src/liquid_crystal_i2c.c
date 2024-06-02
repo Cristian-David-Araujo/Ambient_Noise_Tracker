@@ -1,6 +1,7 @@
 #include "liquid_crystal_i2c.h"
 
-void lcd_init(lcd_t *lcd, uint8_t addr, i2c_inst_t *i2c, uint8_t cols, uint8_t rows, uint16_t baudrate, uint8_t sda, uint8_t scl)
+void lcd_init(lcd_t *lcd, uint8_t addr, i2c_inst_t *i2c, uint8_t cols, uint8_t rows, 
+            uint16_t baudrate, uint8_t sda, uint8_t scl, uint8_t en_gpio)
 {
     // Initialize the LCD structure
     lcd->addr = addr;
@@ -11,6 +12,7 @@ void lcd_init(lcd_t *lcd, uint8_t addr, i2c_inst_t *i2c, uint8_t cols, uint8_t r
     lcd->baudrate = baudrate;
     lcd->sda = sda;
     lcd->scl = scl;
+    lcd->en_gpio = en_gpio;
     lcd->display = 0;
     lcd->cursor = 0;
     lcd->temp_message = NULL;
@@ -18,13 +20,15 @@ void lcd_init(lcd_t *lcd, uint8_t addr, i2c_inst_t *i2c, uint8_t cols, uint8_t r
     lcd->pos_secuence = 0;
     lcd->en = false;
 
-
     // Initialize the I2C communication
     i2c_init(lcd->i2c, baudrate*1000);
     gpio_set_function(sda, GPIO_FUNC_I2C);
     gpio_set_function(scl, GPIO_FUNC_I2C);
     gpio_pull_up(sda);
     gpio_pull_up(scl);
+    gpio_init(en_gpio);
+    gpio_set_dir(en_gpio, GPIO_OUT);
+    gpio_put(en_gpio, 1); ///< active low
 }
 
 void lcd_write(lcd_t *lcd, uint8_t val)

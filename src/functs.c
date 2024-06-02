@@ -49,7 +49,7 @@
 #define BUTTON_GPIO 2
 #define DORMANT_GPIO 3
 #define LED_GPIO 18
-#define MPHONE_GPIO 6
+#define MPHONE_GPIO 26
 
 system_t gSystem;  ///< Global variable that stores the state of the system
 led_rgb_t gLed;         ///< Global variable that stores the led information
@@ -67,13 +67,10 @@ void initGlobalVariables(void)
     //Initialize the modules
     led_init(&gLed, 18, 1000000); //Led on green
     gps_init(&gGps, uart1, GPS_TX, GPS_RX, 9600);
-    lcd_init(&gLcd, 0x20, i2c1, 16, 2, 100, PIN_SDA, PIN_SCL);
-    gpio_init(LCD_EN_GPIO);
-    gpio_set_dir(LCD_EN_GPIO, GPIO_OUT);
-    gpio_put(LCD_EN_GPIO, 1);
-    gpio_init(MPHONE_EN_GPIO);
-    gpio_set_dir(MPHONE_EN_GPIO, GPIO_OUT);
-    gpio_put(MPHONE_EN_GPIO, 1);
+    lcd_init(&gLcd, 0x20, i2c1, 16, 2, 100, PIN_SDA, PIN_SCL, LCD_EN_GPIO);
+    led_init(&gLed, LED_GPIO, 1000000);
+    button_init(&gButton, BUTTON_GPIO);
+    mphone_init(&gMphone, MPHONE_GPIO, ADC_SAMPLE_RATE_HZ, MPHONE_EN_GPIO);
   
     ///< Set the system state to DORMANT
     gSystem.state = DORMANT; 
@@ -84,10 +81,6 @@ void initGlobalVariables(void)
     gpio_pull_down(DORMANT_GPIO);
     gpio_set_dormant_irq_enabled(DORMANT_GPIO, GPIO_IRQ_EDGE_RISE, true);
 
-    led_init(&gLed, LED_GPIO, 1000000);
-    gFlags.W = 0;
-    button_init(&gButton, BUTTON_GPIO);
-    mphone_init(&gMphone, MPHONE_GPIO, ADC_SAMPLE_RATE_HZ);
 }
 
 void initPWMasPIT(uint8_t slice, uint16_t milis, bool enable)
@@ -182,8 +175,8 @@ void program(void)
         gLed.state = 1;         ///< Led on
         led_setup_red(&gLed);   ///< Red led
         measure_freqs();
-        gpio_put(LCD_EN_GPIO, 0);
-        gpio_put(MPHONE_EN_GPIO, 0);
+        lcd_enable(&gLcd);
+        mphone_enable(&gMphone);
         lcd_initialization_timer_handler();
         lcd_refresh_handler();
     }
@@ -311,6 +304,8 @@ void led_timer_handler(void)
     }
     else if (gSystem.state == DONE || gSystem.state == ERROR){
         led_off(&gLed);
+        lcd_disable(&gLcd);
+        mphone_disable(&gMphone);
         // irq_set_enabled(gLed.timer_irq, false); ///< Disable the led timer
         gSystem.state = DORMANT; ///< The system is going to DORMANT state
     }
