@@ -43,9 +43,11 @@ typedef struct _mphone_t{
     uint32_t sample;
     uint8_t gpio_num;
     uint16_t adc_buffer[MPHONE_SIZE_BUFFER];
-    float_t lat[MPHONE_SIZE_SPL]; ///< SPL array to store the Latitude values of each SPL value.
-    float_t lon[MPHONE_SIZE_SPL]; ///< SPL array to store the Longitude values of each SPL value.
-    float_t spl[MPHONE_SIZE_SPL];
+    double lat[MPHONE_SIZE_SPL]; ///< SPL array to store the Latitude values of each SPL value.
+    double lon[MPHONE_SIZE_SPL]; ///< SPL array to store the Longitude values of each SPL value.
+    double spl[MPHONE_SIZE_SPL];
+    double lat_v;
+    double lon_v;
     uint8_t spl_index; ///< Index of the SPL array. It is going to count up to MPHONE_SIZE_SPL.
     uint32_t dma_time; ///< Time which takes the DMA to transfer the data.
     bool dma_done; ///< Flag to indicate that the DMA has finished the transfer.
@@ -83,7 +85,7 @@ static inline void mphone_dma_trigger(mphone_t *mphone)
  * @param lat Latitude of the place where the SPL was measured.
  * @param lon Longitude of the place where the SPL was measured.
  */
-void mphone_calculate_spl(mphone_t *mphone, float_t lat, float_t lon);
+void mphone_calculate_spl(mphone_t *mphone);
 
 /**
  * @brief Store the SPL array in non-volatile memory.

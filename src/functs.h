@@ -111,12 +111,6 @@ void led_timer_handler(void);
 void lcd_refresh_handler(void);
 
 /**
- * @brief Handler for the check timer
- * 
- */
-void check_timer_handler(void);
-
-/**
  * @brief Handler for the DMA interruption
  * 
  */

@@ -14,7 +14,7 @@ void lcd_init(lcd_t *lcd, uint8_t addr, i2c_inst_t *i2c, uint8_t cols, uint8_t r
     lcd->display = 0;
     lcd->cursor = 0;
     lcd->temp_message = NULL;
-    lcd->num_alarm = 0;
+    lcd->num_alarm = TIMER_IRQ_0;
     lcd->pos_secuence = 0;
     lcd->en = false;
 
@@ -25,42 +25,6 @@ void lcd_init(lcd_t *lcd, uint8_t addr, i2c_inst_t *i2c, uint8_t cols, uint8_t r
     gpio_set_function(scl, GPIO_FUNC_I2C);
     gpio_pull_up(sda);
     gpio_pull_up(scl);
-
-    lcd_initialization_timer_handler();
-
-    // Make the I2C pins available to picotool
-    //bi_decl(bi_2pins_with_func(sda, scl, GPIO_FUNC_I2C));
-
-    // Initialize the LCD display
-    // uint8_t lcd_function = (LCD_FUNCTION_SET | LCD_2LINE);
-    // uint8_t lcd_entry_mode = (LCD_ENTRYMODESET | LCD_ENTRYLEFT);
-    // uint8_t lcd_display_ctrl = (LCD_DISPLAY_CONTROL | LCD_DISPLAY_ON);
-    
-    // sleep_ms(15);
-    // lcd_send_byte(lcd, 0x03, LCD_COMMAND);
-    // sleep_ms(5);
-    // lcd_send_byte(lcd, 0x03, LCD_COMMAND);
-    // sleep_us(100);
-    // lcd_send_byte(lcd, 0x03, LCD_COMMAND);
-    // sleep_us(100);
-    // lcd_send_byte(lcd, 0x02, LCD_COMMAND);
-    
-    // // Initialisation sequence as per the Hitachi manual (Figure 24, p.46).
-    // sleep_ms(15);
-    // // Function set
-    // lcd_send_byte(lcd, lcd_entry_mode, LCD_COMMAND);
-    // sleep_us(40);
-    // // Display control
-    // lcd_send_byte(lcd, lcd_function, LCD_COMMAND);
-    // sleep_us(40);
-    // // Entry mode
-    // lcd_send_byte(lcd, lcd_display_ctrl, LCD_COMMAND);
-    // sleep_us(40);
-    // // Display clear
-    // lcd_clear_display(lcd);
-    // sleep_ms(2);
-    
-
 }
 
 void lcd_write(lcd_t *lcd, uint8_t val)
@@ -220,8 +184,8 @@ void lcd_initialization_timer_handler(void)
     if (gLcd.pos_secuence <= 8)
     {
         // Setting the IRQ handler
-        irq_set_exclusive_handler(TIMER_IRQ_0, lcd_initialization_timer_handler);
-        irq_set_enabled(TIMER_IRQ_0, true);
+        irq_set_exclusive_handler(gLcd.num_alarm, lcd_initialization_timer_handler);
+        irq_set_enabled(gLcd.num_alarm, true);
         hw_set_bits(&timer_hw->inte, 1u << gLcd.num_alarm); // Enable alarm0 for signal value calculation
         timer_hw->alarm[gLcd.num_alarm] = (uint32_t)(time_us_64() + time_next_secuence_us); // Set alarm0 to trigger in t_sample
     }

@@ -40,16 +40,14 @@ typedef struct
 static inline void led_init(led_rgb_t *led, uint8_t lsb_rgb, uint32_t time)
 {
     led->lsb_rgb = lsb_rgb;
-    led->state = false;
+    led->state = true;
     led->color = 0x00;
     led->time = time;
-    led->timer_irq = TIMER_IRQ_0;
+    led->timer_irq = TIMER_IRQ_2;
     gpio_init_mask(0x00000007 << lsb_rgb); // gpios for key rows 2,3,4,5
     gpio_set_dir_masked(0x00000007 << lsb_rgb, 0x00000007 << lsb_rgb); // rows as outputs
     gpio_put_masked(0x00000007 << lsb_rgb, 0x00000000);
 
-    irq_set_exclusive_handler(led->timer_irq, led_timer_handler);
-    irq_set_enabled(led->timer_irq, true);
 }
 
 /**
@@ -63,8 +61,21 @@ static inline void led_set_alarm(led_rgb_t *led)
     hw_clear_bits(&timer_hw->intr, 1u << led->timer_irq);
 
     // Setting the IRQ handler
+    irq_set_exclusive_handler(led->timer_irq, led_timer_handler);
+    irq_set_enabled(led->timer_irq, true);
     hw_set_bits(&timer_hw->inte, 1u << led->timer_irq); ///< Enable alarm0 interrupt
     timer_hw->alarm[led->timer_irq] = (uint32_t)(time_us_64() + led->time); ///< Set alarm1 to trigger in 100ms
+}
+
+/**
+ * @brief This function turns on the LED depending on the color
+ * 
+ * @param led 
+ * @param color just the three LSBs are used: 0b111 means white, 0b000 means off
+ */
+static inline void led_on(led_rgb_t *led, uint8_t color)
+{
+    gpio_put_masked(0x00000007 << led->lsb_rgb, (uint32_t)color << led->lsb_rgb);
 }
 
 /**
@@ -75,8 +86,7 @@ static inline void led_set_alarm(led_rgb_t *led)
  */
 static inline void led_setup(led_rgb_t *led, uint8_t color) 
 {
-    color &= (uint8_t)led->state;
-    gpio_put_masked(0x00000007 << led->lsb_rgb, (uint32_t)color << led->lsb_rgb);
+    led_on(led, color);
     led_set_alarm(led);
 }
 
@@ -148,17 +158,6 @@ static inline void led_setup_purple(led_rgb_t *led)
 static inline void led_setup_orange(led_rgb_t *led)
 {
     led_setup(led, 0x03);
-}
-
-/**
- * @brief This function turns on the LED depending on the color
- * 
- * @param led 
- * @param color just the three LSBs are used: 0b111 means white, 0b000 means off
- */
-static inline void led_on(led_rgb_t *led, uint8_t color)
-{
-    gpio_put_masked(0x00000007 << led->lsb_rgb, (uint32_t)color << led->lsb_rgb);
 }
 
 /**

@@ -37,16 +37,19 @@
 #define PIN_SCL 15
 
 //UART GPS Pins
-#define GPS_TX 5
-#define GPS_RX 4
+#define GPS_TX 4
+#define GPS_RX 5
 
 #define SYSTEM_CLK_HZ 6.5*MHZ
 #define SYSTEM_CLK_KHZ 6500
 #define ADC_SAMPLE_RATE_HZ MPHONE_SIZE_BUFFER/10
 
-#define BUTTON_GPIO 10
-#define LED_GPIO 0
-#define MPHONE_GPIO 26
+#define LCD_EN_GPIO 12
+#define MPHONE_EN_GPIO 13
+#define BUTTON_GPIO 2
+#define DORMANT_GPIO 3
+#define LED_GPIO 18
+#define MPHONE_GPIO 6
 
 system_t gSystem;  ///< Global variable that stores the state of the system
 led_rgb_t gLed;         ///< Global variable that stores the led information
@@ -63,18 +66,23 @@ void initGlobalVariables(void)
 
     //Initialize the modules
     led_init(&gLed, 18, 1000000); //Led on green
-    lcd_refresh_handler();
-
     gps_init(&gGps, uart1, GPS_TX, GPS_RX, 9600);
-
     lcd_init(&gLcd, 0x20, i2c1, 16, 2, 100, PIN_SDA, PIN_SCL);
-    
-    led_on(&gLed, 0x04); //Led on red
+    gpio_init(LCD_EN_GPIO);
+    gpio_set_dir(LCD_EN_GPIO, GPIO_OUT);
+    gpio_put(LCD_EN_GPIO, 1);
+    gpio_init(MPHONE_EN_GPIO);
+    gpio_set_dir(MPHONE_EN_GPIO, GPIO_OUT);
+    gpio_put(MPHONE_EN_GPIO, 1);
   
     ///< Set the system state to DORMANT
     gSystem.state = DORMANT; 
-    clock_config();
-    gpio_set_dormant_irq_enabled(BUTTON_GPIO, GPIO_IRQ_EDGE_RISE, true);
+    measure_freqs();
+    // clock_config();
+    gpio_init(DORMANT_GPIO);
+    gpio_set_dir(DORMANT_GPIO, GPIO_IN);
+    gpio_pull_down(DORMANT_GPIO);
+    gpio_set_dormant_irq_enabled(DORMANT_GPIO, GPIO_IRQ_EDGE_RISE, true);
 
     led_init(&gLed, LED_GPIO, 1000000);
     gFlags.W = 0;
@@ -111,6 +119,9 @@ void clock_config(void)
                     0, ///< No aux mux
                     SYSTEM_CLK_HZ,
                     SYSTEM_CLK_HZ);
+    
+    
+    printf("Clocks configured\n");
 
     ///< Sys Clock configuration
     clock_configure(clk_sys, 
@@ -119,29 +130,39 @@ void clock_config(void)
                     SYSTEM_CLK_HZ,
                     SYSTEM_CLK_HZ);
     
-    ///< CLK USB = 0MHz
-    clock_stop(clk_usb);
+
+    printf("Clocks configured: 2\n");
 
     ///< CLK RTC = 0MHz
     clock_stop(clk_rtc);
+    printf("Clocks configured: 3\n");
 
+    ///< USB Clock configuration
+    clock_configure(clk_usb, 
+                    0,                                          // CLOCKS_CLK_USB_CTRL_AUXSRC_VALUE_CLK_SYS
+                    CLOCKS_CLK_USB_CTRL_AUXSRC_VALUE_ROSC_CLKSRC_PH,  // CLOCKS_CLK_USB_CTRL_AUXSRC_VALUE_ROSC_CLKSRC_PH
+                    SYSTEM_CLK_HZ,
+                    SYSTEM_CLK_HZ);
+    printf("Clocks configured: 3\n");
     ///< ADC Clock configuration
     clock_configure(clk_adc, 
                     0,
-                    CLOCKS_CLK_ADC_CTRL_AUXSRC_VALUE_ROSC_CLKSRC_PH,
+                    CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLK_SYS,
                     SYSTEM_CLK_HZ,
                     SYSTEM_CLK_HZ);
-
+    printf("Clocks configured: 4\n");
     ///< Peri Clock configuration
     clock_configure(clk_peri, 
                     0,                                          // CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLK_SYS
-                    CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_ROSC_CLKSRC_PH,  // CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_ROSC_CLKSRC_PH
+                    CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLK_SYS,  // CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_ROSC_CLKSRC_PH
                     SYSTEM_CLK_HZ,
                     SYSTEM_CLK_HZ);
 
+    printf("Clocks configured: 5\n");
     pll_deinit(pll_sys);
-    pll_deinit(pll_usb);
+    // pll_deinit(pll_usb);
 
+    printf("Clocks configured: 6\n");
     ///< Can disable xosc
     xosc_disable();
 
@@ -158,8 +179,13 @@ void program(void)
         gFlags.B.wait = 0;
         printf("WAIT \n");
         gLed.time = 1000000;    ///< 1s
+        gLed.state = 1;         ///< Led on
         led_setup_red(&gLed);   ///< Red led
         measure_freqs();
+        gpio_put(LCD_EN_GPIO, 0);
+        gpio_put(MPHONE_EN_GPIO, 0);
+        lcd_initialization_timer_handler();
+        lcd_refresh_handler();
     }
     if (gFlags.B.meas){ ///< Start the measurement
         gFlags.B.meas = 0;
@@ -178,7 +204,7 @@ void program(void)
     if (gFlags.B.mphone_dma){ ///< The DMA has finished and the microphone has a new SPL
         gFlags.B.mphone_dma = 0;
         printf("Microphone interruption\n");
-        mphone_calculate_spl(&gMphone, 1.1, 1.1); ///< Calculate the Sound Pressure Level
+        mphone_calculate_spl(&gMphone); ///< Calculate the Sound Pressure Level
         gMphone.spl_index++;
         gSystem.state = DONE;       ///< The system has finished the measurement
         gLed.time = 2000000;        ///< 2s
@@ -187,6 +213,39 @@ void program(void)
         if (gMphone.spl_index == MPHONE_SIZE_SPL) {
             gMphone.spl_index = 0;
         }
+        printf("End Mphone DMA \n");
+    }
+    if (gFlags.B.uart_read){
+        //Get the data from the GPS
+        gps_get_GPGGA(&gGps);
+
+        uart_clear_FIFO(gGps.uart);
+        //enable the UART read interruption
+        uart_set_irq_enables(gGps.uart, true, false);
+
+        gps_check_data(&gGps);
+
+        //Clear the flag
+        gFlags.B.uart_read = 0;  
+    }
+    if (gFlags.B.refresh_lcd){
+         //Show the data on the LCD
+        uint8_t str_0[16]; ///< Line 0 of the LCD
+
+        //Clear the LCD
+        //lcd_send_str_cursor(&gLcd, "                ", 0, 0);
+        //lcd_send_str_cursor(&gLcd, "                ", 1, 0);
+        sprintf((char *)str_0, "X: %f", gGps.latitude); 
+        lcd_send_str_cursor(&gLcd, (char *)str_0, 0, 0); //Show the latitude
+        sprintf((char *)str_0, "Y: %f", gGps.longitude);
+        lcd_send_str_cursor(&gLcd, (char *)str_0, 1, 0); //Show the longitude
+        sprintf((char *)str_0, "%d", gGps.fix_quality);
+        lcd_send_str_cursor(&gLcd, (char *)str_0, 0, 15); //Show the fix quality
+        sprintf((char *)str_0, "%d", gGps.num_satellites);
+        lcd_send_str_cursor(&gLcd, (char *)str_0, 1, 15); //Show the number of satellites
+
+        //Clear the flag
+        gFlags.B.refresh_lcd = 0;
     }
 }
 
@@ -202,9 +261,17 @@ void gpioCallback(uint num, uint32_t mask)
             break;
 
         case READY: ///< Start measuring the noise when the button is pressed and the system is ready
-            gSystem.state = MEASURE; ///< The system is measuring the noise
-            button_setup_pwm_dbnc(&gButton); ///< Debounce setup
-            printf("Button pressed: Start the measurement \n");
+            if (gGps.valid){
+                gSystem.state = MEASURE; ///< The system is measuring the noise
+                gMphone.lat_v = gGps.latitude; ///< Store the latitude of the place where the SPL was measured
+                gMphone.lon_v = gGps.longitude; ///< Store the longitude of the place where the SPL was measured
+                button_setup_pwm_dbnc(&gButton); ///< Debounce setup
+                printf("Button pressed: Start the measurement \n");
+            }
+            else {
+                gSystem.state = ERROR; ///< The system is waiting for the GPS to be hooked
+                gFlags.B.error = 1; ///< The system is waiting for the GPS to be hooked
+            }
             break;
 
         case MEASURE: ///< Stop measuring the noise when the button is pressed and the system is measuring. 
@@ -227,9 +294,20 @@ void led_timer_handler(void)
     hw_clear_bits(&timer_hw->intr, 1u << gLed.timer_irq);
 
     if (gSystem.state == WAIT){
-        gLed.state = !gLed.state; ///< Toggle the led state
-        led_setup_red(&gLed); ///< Red led is setting continuously in WAIT state
-        ///< Check the GPS
+        printf("Alarm - WAIT\n");
+        if (gLed.state){
+            led_setup_red(&gLed); ///< Red led
+            gLed.state = 0;
+        }else {
+            led_on(&gLed, 0x00);
+            led_set_alarm(&gLed);
+            gLed.state = 1;
+        }
+        if (gGps.valid == 1) {
+            gSystem.state = READY; ///< The system is ready to measure
+            led_setup_green(&gLed); ///< Green led
+            printf("READY\n");
+        }
     }
     else if (gSystem.state == DONE || gSystem.state == ERROR){
         led_off(&gLed);
@@ -300,53 +378,6 @@ void uart_read_handler(void)
     }
 }
 
-void check_timer_handler(void)
-{
-    if (gFlags.B.uart_read){
-        //Get the data from the GPS
-        gps_get_GPGGA(&gGps);
-
-        uart_clear_FIFO(gGps.uart);
-        //enable the UART read interruption
-        uart_set_irq_enables(gGps.uart, true, false);
-
-        gps_check_data(&gGps);
-
-        if(gGps.valid == 1){
-            //GPS is working
-            led_on(&gLed, 0x02); //Led on green
-        }else{
-            //GPS is not working
-            led_on(&gLed, 0x04); //Led on red
-        }
-
-        //Clear the flag
-        gFlags.B.uart_read = 0;  
-    }
-
-    if (gFlags.B.refresh_lcd){
-         //Show the data on the LCD
-        uint8_t str_0[16]; ///< Line 0 of the LCD
-
-        //Clear the LCD
-        //lcd_send_str_cursor(&gLcd, "                ", 0, 0);
-        //lcd_send_str_cursor(&gLcd, "                ", 1, 0);
-        sprintf((char *)str_0, "X: %f", gGps.latitude); 
-        lcd_send_str_cursor(&gLcd, (char *)str_0, 0, 0); //Show the latitude
-        sprintf((char *)str_0, "Y: %f", gGps.longitude);
-        lcd_send_str_cursor(&gLcd, (char *)str_0, 1, 0); //Show the longitude
-        sprintf((char *)str_0, "%d", gGps.fix_quality);
-        lcd_send_str_cursor(&gLcd, (char *)str_0, 0, 15); //Show the fix quality
-        sprintf((char *)str_0, "%d", gGps.num_satellites);
-        lcd_send_str_cursor(&gLcd, (char *)str_0, 1, 15); //Show the number of satellites
-
-        //Clear the flag
-        gFlags.B.refresh_lcd = 0;
-    }
-    // Aknowledge the interrupt
-    hw_clear_bits(&timer_hw->intr, 1u << TIMER_IRQ_2);
-}
-
 void dma_handler(void)
 {
     dma_irqn_acknowledge_channel(gMphone.dma_irq, gMphone.dma_chan); ///< Acknowledge the DMA IRQ
@@ -396,6 +427,7 @@ void pwm_handler(void)
         break;
     }
 }
+
 
 void measure_freqs(void)
 {

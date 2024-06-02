@@ -64,11 +64,11 @@ void gps_send_command(gps_t *gps, char *command)
 
 void gps_get_GNRMC(gps_t *gps)
 {
-    printf("GPS data: %s\n", gps->buffer);
+    // printf("GPS data: %s\n", gps->buffer);
 
     // Check if the GPS data is valid GNRMC or GPRMC
     if (strncmp(gps->buffer, "$GNRMC", 6) != 0 && strncmp(gps->buffer, "$GPRMC", 6) != 0) {
-        printf("Invalid GPS data format.\n");
+        // printf("Invalid GPS data format.\n");
         return;
     }
 
@@ -124,18 +124,18 @@ void gps_get_GNRMC(gps_t *gps)
         field_index++;
     }
 
-    printf("Time: %d:%d:%d\n", gps->time_h, gps->time_m, gps->time_s);
-    printf("Status: %d\n", gps->status);
-    printf("Latitude: %f %c\n", gps->latitude, gps->latitude_area);
-    printf("Longitude: %f %c\n", gps->longitude, gps->longitude_area);
+    // printf("Time: %d:%d:%d\n", gps->time_h, gps->time_m, gps->time_s);
+    // printf("Status: %d\n", gps->status);
+    // printf("Latitude: %f %c\n", gps->latitude, gps->latitude_area);
+    // printf("Longitude: %f %c\n", gps->longitude, gps->longitude_area);
 }
 
 void gps_get_GPGGA(gps_t *gps) {
-    printf("GPS data: %s\n", gps->buffer);
+    // printf("GPS data: %s\n", gps->buffer);
     gps->valid = false;
     // Check if the GPS data is valid GPGGA
     if (strncmp(gps->buffer, "$GPGGA", 6) != 0) {
-        printf("Invalid GPS data format.\n");
+        // printf("Invalid GPS data format.\n");
         return;
     }
 
@@ -191,12 +191,12 @@ void gps_get_GPGGA(gps_t *gps) {
         field_index++;
     }
 
-    printf("Time: %02d:%02d:%02d\n", gps->time_h, gps->time_m, gps->time_s);
-    printf("Latitude: %.6f %c\n", gps->latitude, gps->latitude_area);
-    printf("Longitude: %.6f %c\n", gps->longitude, gps->longitude_area);
-    printf("Fix Quality: %d\n", gps->fix_quality);
-    printf("Number of Satellites: %d\n", gps->num_satellites);
-    printf("Altitude: %.2f meters\n", gps->altitude);
+    // printf("Time: %02d:%02d:%02d\n", gps->time_h, gps->time_m, gps->time_s);
+    // printf("Latitude: %.6f %c\n", gps->latitude, gps->latitude_area);
+    // printf("Longitude: %.6f %c\n", gps->longitude, gps->longitude_area);
+    // printf("Fix Quality: %d\n", gps->fix_quality);
+    // printf("Number of Satellites: %d\n", gps->num_satellites);
+    // printf("Altitude: %.2f meters\n", gps->altitude);
 }
 
 void gps_check_data(gps_t *gps)
