@@ -70,7 +70,7 @@ void initGlobalVariables(void)
     lcd_init(&gLcd, 0x20, i2c1, 16, 2, 100, PIN_SDA, PIN_SCL, LCD_EN_GPIO);
     led_init(&gLed, LED_GPIO, 1000000);
     button_init(&gButton, BUTTON_GPIO);
-    mphone_init(&gMphone, MPHONE_GPIO, ADC_SAMPLE_RATE_HZ);
+    mphone_init(&gMphone, MPHONE_GPIO, ADC_SAMPLE_RATE_HZ, MPHONE_EN_GPIO);
   
     ///< Set the system state to DORMANT
     gSystem.state = DORMANT; 
