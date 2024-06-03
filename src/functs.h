@@ -43,6 +43,7 @@ typedef struct _system_t{
         DONE,       ///< The system has finished the measurement and is sending the data (orange led)
         ERROR       ///< An anomaly has occurred (red led for 3s)
     } state;
+    bool usb; ///< USB is connected (available for the user)
 } system_t;
 
 /**
@@ -84,6 +85,12 @@ void clock_config(void);
  * 
  */
 void measure_freqs(void);
+
+/**
+ * @brief Make a printf() if system has enabled the USB.
+ * 
+ */
+void printf_usb(char *str);
 
 // -------------------------------------------------------------
 // ---------------- Callback and handler functions -------------

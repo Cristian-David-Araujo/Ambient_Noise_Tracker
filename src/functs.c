@@ -74,8 +74,8 @@ void initGlobalVariables(void)
   
     ///< Set the system state to DORMANT
     gSystem.state = DORMANT; 
-    measure_freqs();
-    // clock_config();
+    gSystem.usb = false;
+    clock_config();
     gpio_init(DORMANT_GPIO);
     gpio_set_dir(DORMANT_GPIO, GPIO_IN);
     gpio_pull_down(DORMANT_GPIO);
@@ -104,17 +104,12 @@ void initPWMasPIT(uint8_t slice, uint16_t milis, bool enable)
 
 void clock_config(void)
 {
-    ///< Print the frequencies of the clocks
-    measure_freqs();
     ///< Reference Clock configuration
     clock_configure(clk_ref, 
                     CLOCKS_CLK_REF_CTRL_SRC_VALUE_ROSC_CLKSRC_PH, // CLOCKS_CLK_REF_CTRL_SRC_VALUE_ROSC_CLKSRC_PH
                     0, ///< No aux mux
                     SYSTEM_CLK_HZ,
                     SYSTEM_CLK_HZ);
-    
-    
-    printf("Clocks configured\n");
 
     ///< Sys Clock configuration
     clock_configure(clk_sys, 
@@ -122,28 +117,17 @@ void clock_config(void)
                     0, ///< Using glitchless mux
                     SYSTEM_CLK_HZ,
                     SYSTEM_CLK_HZ);
-    
-
-    printf("Clocks configured: 2\n");
 
     ///< CLK RTC = 0MHz
     clock_stop(clk_rtc);
-    printf("Clocks configured: 3\n");
 
-    ///< USB Clock configuration
-    clock_configure(clk_usb, 
-                    0,                                          // CLOCKS_CLK_USB_CTRL_AUXSRC_VALUE_CLK_SYS
-                    CLOCKS_CLK_USB_CTRL_AUXSRC_VALUE_ROSC_CLKSRC_PH,  // CLOCKS_CLK_USB_CTRL_AUXSRC_VALUE_ROSC_CLKSRC_PH
-                    SYSTEM_CLK_HZ,
-                    SYSTEM_CLK_HZ);
-    printf("Clocks configured: 3\n");
     ///< ADC Clock configuration
     clock_configure(clk_adc, 
                     0,
-                    CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLK_SYS,
+                    CLOCKS_CLK_ADC_CTRL_AUXSRC_VALUE_ROSC_CLKSRC_PH,
                     SYSTEM_CLK_HZ,
                     SYSTEM_CLK_HZ);
-    printf("Clocks configured: 4\n");
+
     ///< Peri Clock configuration
     clock_configure(clk_peri, 
                     0,                                          // CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLK_SYS
@@ -151,26 +135,42 @@ void clock_config(void)
                     SYSTEM_CLK_HZ,
                     SYSTEM_CLK_HZ);
 
-    printf("Clocks configured: 5\n");
     pll_deinit(pll_sys);
-    // pll_deinit(pll_usb);
 
-    printf("Clocks configured: 6\n");
-    ///< Can disable xosc
-    xosc_disable();
+    ///< USB Clock configuration
+    if (!gSystem.usb){
+        // clock_configure(clk_usb, 
+        //                 0,                                          // CLOCKS_CLK_USB_CTRL_AUXSRC_VALUE_CLK_SYS
+        //                 CLOCKS_CLK_USB_CTRL_AUXSRC_VALUE_ROSC_CLKSRC_PH,  // CLOCKS_CLK_USB_CTRL_AUXSRC_VALUE_ROSC_CLKSRC_PH
+        //                 SYSTEM_CLK_HZ,
+        //                 SYSTEM_CLK_HZ);
 
+        // CLK USB = 0MHz
+        clock_stop(clk_usb);
+        pll_deinit(pll_usb); 
+
+        // Can disable xosc
+        xosc_disable();
+                        
+        // pll_deinit(pll_usb);
+        // pll_init(pll_usb, 1, 1200 * KHZ * KHZ, 7, 7); ///< 24.549MHz
+    }else {
+        ///< Print the frequencies of the clocks
+        measure_freqs();
+    }
+    
     ///< Reconfigure uart with new clocks
     setup_default_uart();
-
-    ///< Print the frequencies of the clocks
-    measure_freqs();
+    if (frequency_count_khz(CLOCKS_FC0_SRC_VALUE_CLK_USB) <= 1) {
+        led_setup_purple(&gLed); ///< Purple led
+    }
 }
 
 void program(void)
 {
     if (gFlags.B.wait){ ///< The system is waiting for the GPS to be hooked
         gFlags.B.wait = 0;
-        printf("WAIT \n");
+        printf_usb("WAIT \n");
         gLed.time = 1000000;    ///< 1s
         gLed.state = 1;         ///< Led on
         led_setup_red(&gLed);   ///< Red led
@@ -182,7 +182,7 @@ void program(void)
     }
     if (gFlags.B.meas){ ///< Start the measurement
         gFlags.B.meas = 0;
-        printf("MEASURE \n");
+        printf_usb("MEASURE \n");
         gLed.time = 10000000;       ///< 10s
         led_setup_yellow(&gLed);    ///< Yellow led
         gMphone.dma_time = time_us_32(); ///< Start the DMA transfer
@@ -190,13 +190,13 @@ void program(void)
     }
     if (gFlags.B.error){ ///< An anomaly has occurred
         gFlags.B.error = 0;
-        printf("ERROR \n");
+        printf_usb("ERROR \n");
         gLed.time = 3000000;    ///< 3s
         led_setup_red(&gLed);   ///< Red led
     }
     if (gFlags.B.mphone_dma){ ///< The DMA has finished and the microphone has a new SPL
         gFlags.B.mphone_dma = 0;
-        printf("Microphone interruption\n");
+        printf_usb("Microphone interruption\n");
         mphone_calculate_spl(&gMphone); ///< Calculate the Sound Pressure Level
         gMphone.spl_index++;
         gSystem.state = DONE;       ///< The system has finished the measurement
@@ -206,7 +206,7 @@ void program(void)
         if (gMphone.spl_index == MPHONE_SIZE_SPL) {
             gMphone.spl_index = 0;
         }
-        printf("End Mphone DMA \n");
+        printf_usb("End Mphone DMA \n");
     }
     if (gFlags.B.uart_read){
         //Get the data from the GPS
@@ -250,7 +250,7 @@ void gpioCallback(uint num, uint32_t mask)
         case DORMANT: ///< Start the system when the button is pressed and the system is dormant. Like a power on button
             gSystem.state = WAIT;   ///< The system is waiting for the GPS to be hooked.
             button_setup_pwm_dbnc(&gButton); ///< Debounce setup
-            printf("Button pressed: The system wake up \n");
+            printf_usb("Button pressed: The system wake up \n");
             break;
 
         case READY: ///< Start measuring the noise when the button is pressed and the system is ready
@@ -259,7 +259,7 @@ void gpioCallback(uint num, uint32_t mask)
                 gMphone.lat_v = gGps.latitude; ///< Store the latitude of the place where the SPL was measured
                 gMphone.lon_v = gGps.longitude; ///< Store the longitude of the place where the SPL was measured
                 button_setup_pwm_dbnc(&gButton); ///< Debounce setup
-                printf("Button pressed: Start the measurement \n");
+                printf_usb("Button pressed: Start the measurement \n");
             }
             else {
                 gSystem.state = ERROR; ///< The system is waiting for the GPS to be hooked
@@ -270,11 +270,11 @@ void gpioCallback(uint num, uint32_t mask)
         case MEASURE: ///< Stop measuring the noise when the button is pressed and the system is measuring. 
             gSystem.state = ERROR; ///< An anomaly has occurred
             button_setup_pwm_dbnc(&gButton); ///< Debounce setup
-            printf("Button pressed: Stop the measurement \n");
+            printf_usb("Button pressed: Stop the measurement \n");
             break;
 
         default: ///< The system is not ready to start the measurement
-            printf("Button pressed but the system is not ready\n");
+            printf_usb("Button pressed but the system is not ready\n");
             break;
         }
     }
@@ -287,7 +287,7 @@ void led_timer_handler(void)
     hw_clear_bits(&timer_hw->intr, 1u << gLed.timer_irq);
 
     if (gSystem.state == WAIT){
-        printf("Alarm - WAIT\n");
+        printf_usb("Alarm - WAIT\n");
         if (gLed.state){
             led_setup_red(&gLed); ///< Red led
             gLed.state = 0;
@@ -299,7 +299,7 @@ void led_timer_handler(void)
         if (gGps.valid == 1) {
             gSystem.state = READY; ///< The system is ready to measure
             led_setup_green(&gLed); ///< Green led
-            printf("READY\n");
+            printf_usb("READY\n");
         }
     }
     else if (gSystem.state == DONE || gSystem.state == ERROR){
@@ -318,7 +318,7 @@ void led_timer_handler(void)
         else {
             gFlags.B.error = 1; ///< An anomaly has occurred: the DMA transfer is not done after 10s
             gSystem.state = ERROR; ///< An anomaly has occurred: the DMA transfer is not done after 10s
-            printf("ERROR: DMA transfer not done\n");
+            printf_usb("ERROR: DMA transfer not done\n");
         }
     }
 }
@@ -377,8 +377,10 @@ void dma_handler(void)
 {
     dma_irqn_acknowledge_channel(gMphone.dma_irq, gMphone.dma_chan); ///< Acknowledge the DMA IRQ
     gMphone.dma_done = true; ///< Set the flag that indicates that the DMA has finished
-    gMphone.dma_time = time_us_32() - gMphone.dma_time; ///< Calculate the time which takes the DMA to transfer the data
-    printf("DMA time: %d us\n", gMphone.dma_time);
+    gMphone.dma_time = time_us_32() - gMphone.dma_time; ///< Calculate the time which takes the DMA to transfer the data 
+    uint8_t *str;
+    sprintf((char *)str, "DMA time: %d us\n", gMphone.dma_time);
+    printf_usb((char *)str);
 }
 
 void pwm_handler(void)
@@ -444,4 +446,10 @@ void measure_freqs(void)
     printf("clk_adc = %dkHz\n", f_clk_adc);
     printf("clk_rtc = %dkHz\n", f_clk_rtc);
     // Can't measure clk_ref / xosc as it is the ref
+}
+
+void printf_usb(char *str)
+{
+    if (gSystem.usb)
+        printf(str);
 }

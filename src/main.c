@@ -42,12 +42,12 @@ int main() {
         while(gFlags.W){
             program();
         }
-        // if (gSystem.state == DORMANT){
-        //     printf("Pre DORMANT");
-        //     xosc_dormant();
-        //     printf("Post DORMANT");
-        // }
-        // else 
+        if (gSystem.state == DORMANT){
+            printf_usb("Pre DORMANT\n");
+            rosc_set_dormant(); // Set the system to dormant mode
+            printf_usb("Post DORMANT\n");
+        }
+        else 
             __wfi(); // Wait for interrupt (Will put the processor into deep sleep until woken by the RTC interrupt)
         
         
