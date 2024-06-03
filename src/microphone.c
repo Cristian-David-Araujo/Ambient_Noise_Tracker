@@ -114,11 +114,11 @@ void mphone_load_print_spl_location(mphone_t *mphone)
     uint32_t *ptr = (uint32_t *)addr; ///< Place an int pointer at our memory-mapped address
 
     // Load the inventory from the flash memory
-    printf("SPL, Latitude, Longitude\n");
+    // printf("SPL, Latitude, Longitude\n");
     // for (int i = 0; i < 3*MPHONE_SIZE_SPL;){///< Casting? (uint32_t)
     //     mphone->spl[i] = ptr[i]; printf("%f, ", mphone->spl[i]); i++;
     //     mphone->lat[i] = ptr[i]; printf("%f, ", mphone->lat[i]); i++;
     //     mphone->lon[i] = ptr[i]; printf("%f\n", mphone->lon[i]); i++;
     // }
-    printf("End\n");
+    // printf("End Mphone\n");
 }
