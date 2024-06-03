@@ -378,7 +378,7 @@ void dma_handler(void)
     dma_irqn_acknowledge_channel(gMphone.dma_irq, gMphone.dma_chan); ///< Acknowledge the DMA IRQ
     gMphone.dma_done = true; ///< Set the flag that indicates that the DMA has finished
     gMphone.dma_time = time_us_32() - gMphone.dma_time; ///< Calculate the time which takes the DMA to transfer the data 
-    uint8_t *str;
+    uint8_t str[20];
     sprintf((char *)str, "DMA time: %d us\n", gMphone.dma_time);
     printf_usb((char *)str);
 }
@@ -437,14 +437,30 @@ void measure_freqs(void)
     uint f_clk_adc = frequency_count_khz(CLOCKS_FC0_SRC_VALUE_CLK_ADC);
     uint f_clk_rtc = frequency_count_khz(CLOCKS_FC0_SRC_VALUE_CLK_RTC);
 
-    printf("pll_sys = %dkHz\n", f_pll_sys);
-    printf("pll_usb = %dkHz\n", f_pll_usb);
-    printf("rosc = %dkHz\n", f_rosc);
-    printf("clk_sys = %dkHz\n", f_clk_sys);
-    printf("clk_peri = %dkHz\n", f_clk_peri);
-    printf("clk_usb = %dkHz\n", f_clk_usb);
-    printf("clk_adc = %dkHz\n", f_clk_adc);
-    printf("clk_rtc = %dkHz\n", f_clk_rtc);
+    uint8_t str[30];
+    sprintf((char *)str, "pll_sys = %dkHz\n", f_pll_sys);
+    printf_usb((char *)str);
+
+    sprintf((char *)str, "pll_usb = %dkHz\n", f_pll_usb);
+    printf_usb((char *)str);
+
+    sprintf((char *)str, "rosc = %dkHz\n", f_rosc);
+    printf_usb((char *)str);
+
+    sprintf((char *)str, "clk_sys = %dkHz\n", f_clk_sys);
+    printf_usb((char *)str);
+
+    sprintf((char *)str, "clk_peri = %dkHz\n", f_clk_peri);
+    printf_usb((char *)str);
+
+    sprintf((char *)str, "clk_usb = %dkHz\n", f_clk_usb);
+    printf_usb((char *)str);
+
+    sprintf((char *)str, "clk_adc = %dkHz\n", f_clk_adc);
+    printf_usb((char *)str);
+
+    sprintf((char *)str, "clk_rtc = %dkHz\n", f_clk_rtc);
+    printf_usb((char *)str);
     // Can't measure clk_ref / xosc as it is the ref
 }
 
