@@ -119,7 +119,7 @@ static inline void mphone_wrapper()
  */
 static inline void mphone_enable(mphone_t *mphone)
 {
-    gpio_put(mphone->en_gpio, 0);
+    gpio_put(mphone->en_gpio, 1);
     mphone->en = true;
 }
 
@@ -131,7 +131,7 @@ static inline void mphone_enable(mphone_t *mphone)
  */
 static inline void mphone_disable(mphone_t *mphone)
 {
-    gpio_put(mphone->en_gpio, 1);
+    gpio_put(mphone->en_gpio, 0);
     mphone->en = false;
 }
 

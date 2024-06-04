@@ -30,7 +30,7 @@ void mphone_init(mphone_t *mphone, uint8_t gpio_num, uint32_t sample, uint8_t en
     ///< Initialize the GPIO
     gpio_init(en_gpio);
     gpio_set_dir(en_gpio, GPIO_OUT);
-    gpio_put(en_gpio, 1); ///< active low
+    gpio_put(en_gpio, 0); ///< active high
 
     ///< Initialize the ADC
     adc_gpio_init(gpio_num);

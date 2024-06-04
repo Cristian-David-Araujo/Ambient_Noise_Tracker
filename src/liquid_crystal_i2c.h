@@ -204,7 +204,7 @@ void lcd_initialization_timer_handler(void);
  */
 static inline void lcd_enable(lcd_t *lcd)
 {
-    gpio_put(lcd->en_gpio, 0);
+    gpio_put(lcd->en_gpio, 1);
 }
 
 /**
@@ -214,7 +214,7 @@ static inline void lcd_enable(lcd_t *lcd)
  */
 static inline void lcd_disable(lcd_t *lcd)
 {
-    gpio_put(lcd->en_gpio, 1);
+    gpio_put(lcd->en_gpio, 0);
 }
 
 #endif // __LIQUID_CRYSTAL_I2C_H__

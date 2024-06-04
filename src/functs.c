@@ -46,6 +46,7 @@
 
 #define LCD_EN_GPIO 12
 #define MPHONE_EN_GPIO 13
+#define GPS_EN_GPIO 11
 #define BUTTON_GPIO 2
 #define DORMANT_GPIO 3
 #define LED_GPIO 18
@@ -66,7 +67,7 @@ void initGlobalVariables(void)
 
     //Initialize the modules
     led_init(&gLed, 18, 1000000); //Led on green
-    gps_init(&gGps, uart1, GPS_TX, GPS_RX, 9600);
+    gps_init(&gGps, uart1, GPS_TX, GPS_RX, 9600, GPS_EN_GPIO);
     lcd_init(&gLcd, 0x20, i2c1, 16, 2, 100, PIN_SDA, PIN_SCL, LCD_EN_GPIO);
     led_init(&gLed, LED_GPIO, 1000000);
     button_init(&gButton, BUTTON_GPIO);
@@ -74,8 +75,8 @@ void initGlobalVariables(void)
   
     ///< Set the system state to DORMANT
     gSystem.state = DORMANT; 
-    gSystem.usb = false;
-    clock_config();
+    gSystem.usb = true;
+    //clock_config();
     gpio_init(DORMANT_GPIO);
     gpio_set_dir(DORMANT_GPIO, GPIO_IN);
     gpio_pull_down(DORMANT_GPIO);
@@ -175,9 +176,6 @@ void program(void)
         gLed.state = 1;         ///< Led on
         led_setup_red(&gLed);   ///< Red led
         measure_freqs();
-        lcd_enable(&gLcd);
-        mphone_enable(&gMphone);
-        lcd_initialization_timer_handler();
         lcd_refresh_handler();
     }
     if (gFlags.B.meas){ ///< Start the measurement
@@ -250,6 +248,10 @@ void gpioCallback(uint num, uint32_t mask)
         case DORMANT: ///< Start the system when the button is pressed and the system is dormant. Like a power on button
             gSystem.state = WAIT;   ///< The system is waiting for the GPS to be hooked.
             button_setup_pwm_dbnc(&gButton); ///< Debounce setup
+            lcd_enable(&gLcd);
+            mphone_enable(&gMphone);
+            gps_enable(&gGps);
+            lcd_initialization_timer_handler();
             printf_usb("Button pressed: The system wake up \n");
             break;
 
@@ -306,6 +308,7 @@ void led_timer_handler(void)
         led_off(&gLed);
         lcd_disable(&gLcd);
         mphone_disable(&gMphone);
+        gps_disable(&gGps);
         // irq_set_enabled(gLed.timer_irq, false); ///< Disable the led timer
         gSystem.state = DORMANT; ///< The system is going to DORMANT state
     }
