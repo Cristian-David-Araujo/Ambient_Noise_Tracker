@@ -6,6 +6,9 @@ set(PICO_BOARD "pico_w")
 # note: this must happen before project()
 include(pico_sdk_import.cmake)
 
+# We also need PICO EXTRAS
+include(pico_extras_import.cmake)
+
 
 project(Ambient_Noise_Tracker)
 

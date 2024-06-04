@@ -99,6 +99,8 @@ typedef struct
     uint32_t baudrate;  ///< Baudrate of the GPS module
     bool status;  ///< Avalibility GPS positions (1: Success, 0: Fail)
     bool data_available;  ///< Data available in the UART
+    uint8_t en_gpio;  ///< GPIO pin number for enable the GPS module
+    bool enable;  ///< Enable the GPS module
 
     // GPS data
     char buffer[GPS_BUFFSIZE];  ///< Buffer for the GPS data
@@ -127,8 +129,14 @@ extern gps_t gGps;
 /**
  * @brief This function initializes the GPS module L76X of WaveShare with the protocol NMEA 0183
  * 
+ * @param gps GPS structure with the configuration
+ * @param uart UART instance (uart0 or uart1)
+ * @param rx UART Pin number RX
+ * @param tx UART Pin number TX
+ * @param baudrate Baudrate of the GPS module
+ * @param en_gpio GPIO pin number for enable the GPS module
  */
-void gps_init(gps_t *gps, uart_inst_t *uart, uint8_t rx, uint8_t tx, uint32_t baudrate);
+void gps_init(gps_t *gps, uart_inst_t *uart, uint8_t rx, uint8_t tx, uint32_t baudrate, uint8_t en_gpio);
 
 /**
  * @brief Send a command to the GPS, automatically calculate the checksum
@@ -158,6 +166,20 @@ void gps_get_GPGGA(gps_t *gps);
  * @param gps GPS structure with the configuration
  */
 void gps_check_data(gps_t *gps);
+
+/**
+ * @brief Turn On the GPS
+ * 
+ * @param gps GPS structure with the configuration
+ */
+void gps_enable(gps_t *gps);
+
+/**
+ * @brief Turn Off the GPS
+ * 
+ * @param gps GPS structure with the configuration
+ */
+void gps_disable(gps_t *gps);
 
 /*! \brief  Read from the UART witout blocking
  *  \ingroup hardware_uart

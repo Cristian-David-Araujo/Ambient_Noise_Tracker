@@ -28,7 +28,7 @@ void lcd_init(lcd_t *lcd, uint8_t addr, i2c_inst_t *i2c, uint8_t cols, uint8_t r
     gpio_pull_up(scl);
     gpio_init(en_gpio);
     gpio_set_dir(en_gpio, GPIO_OUT);
-    gpio_put(en_gpio, 1); ///< active low
+    gpio_put(en_gpio, 0); ///< active HIGH
 }
 
 void lcd_write(lcd_t *lcd, uint8_t val)
