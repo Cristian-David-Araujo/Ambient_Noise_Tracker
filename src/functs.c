@@ -40,7 +40,7 @@
 #define GPS_TX 4
 #define GPS_RX 5
 
-#define SYSTEM_CLK_HZ 6.5*MHZ
+#define SYSTEM_CLK_HZ 48*MHZ
 #define SYSTEM_CLK_KHZ 6500
 #define ADC_SAMPLE_RATE_HZ MPHONE_SIZE_BUFFER/10
 
@@ -76,12 +76,8 @@ void initGlobalVariables(void)
     ///< Set the system state to DORMANT
     gSystem.state = DORMANT; 
     gSystem.usb = true;
-    //clock_config();
-    gpio_init(DORMANT_GPIO);
-    gpio_set_dir(DORMANT_GPIO, GPIO_IN);
-    gpio_pull_down(DORMANT_GPIO);
-    gpio_set_dormant_irq_enabled(DORMANT_GPIO, GPIO_IRQ_EDGE_RISE, true);
-
+    // clock_config();
+    gpio_set_dormant_irq_enabled(BUTTON_GPIO, GPIO_IRQ_EDGE_RISE, true);
 }
 
 void initPWMasPIT(uint8_t slice, uint16_t milis, bool enable)
@@ -162,6 +158,7 @@ void clock_config(void)
     
     ///< Reconfigure uart with new clocks
     setup_default_uart();
+    stdio_init_all();
     if (frequency_count_khz(CLOCKS_FC0_SRC_VALUE_CLK_USB) <= 1) {
         led_setup_purple(&gLed); ///< Purple led
     }
@@ -175,7 +172,7 @@ void program(void)
         gLed.time = 1000000;    ///< 1s
         gLed.state = 1;         ///< Led on
         led_setup_red(&gLed);   ///< Red led
-        measure_freqs();
+        mphone_configure_dma(&gMphone); ///< Configure the DMA for the microphone
         lcd_refresh_handler();
     }
     if (gFlags.B.meas){ ///< Start the measurement
@@ -196,15 +193,10 @@ void program(void)
         gFlags.B.mphone_dma = 0;
         printf_usb("Microphone interruption\n");
         mphone_calculate_spl(&gMphone); ///< Calculate the Sound Pressure Level
-        gMphone.spl_index++;
         gSystem.state = DONE;       ///< The system has finished the measurement
         gLed.time = 2000000;        ///< 2s
         led_setup_orange(&gLed);    ///< Orange led
         mphone_store_spl_location(&gMphone); ///< Store the SPL array in non-volatile memory
-        if (gMphone.spl_index == MPHONE_SIZE_SPL) {
-            gMphone.spl_index = 0;
-        }
-        printf_usb("End Mphone DMA \n");
     }
     if (gFlags.B.uart_read){
         //Get the data from the GPS
@@ -251,8 +243,9 @@ void gpioCallback(uint num, uint32_t mask)
             lcd_enable(&gLcd);
             mphone_enable(&gMphone);
             gps_enable(&gGps);
+            irq_set_enabled(gLed.timer_irq, true); ///< Enable the led timer
+            irq_set_enabled(TIMER_IRQ_1, true); ///< Enable the lcd refresh timer
             lcd_initialization_timer_handler();
-            printf_usb("Button pressed: The system wake up \n");
             break;
 
         case READY: ///< Start measuring the noise when the button is pressed and the system is ready
@@ -261,7 +254,6 @@ void gpioCallback(uint num, uint32_t mask)
                 gMphone.lat_v = gGps.latitude; ///< Store the latitude of the place where the SPL was measured
                 gMphone.lon_v = gGps.longitude; ///< Store the longitude of the place where the SPL was measured
                 button_setup_pwm_dbnc(&gButton); ///< Debounce setup
-                printf_usb("Button pressed: Start the measurement \n");
             }
             else {
                 gSystem.state = ERROR; ///< The system is waiting for the GPS to be hooked
@@ -272,11 +264,10 @@ void gpioCallback(uint num, uint32_t mask)
         case MEASURE: ///< Stop measuring the noise when the button is pressed and the system is measuring. 
             gSystem.state = ERROR; ///< An anomaly has occurred
             button_setup_pwm_dbnc(&gButton); ///< Debounce setup
-            printf_usb("Button pressed: Stop the measurement \n");
             break;
 
         default: ///< The system is not ready to start the measurement
-            printf_usb("Button pressed but the system is not ready\n");
+            // printf_usb("Button pressed but the system is not ready\n");
             break;
         }
     }
@@ -289,7 +280,6 @@ void led_timer_handler(void)
     hw_clear_bits(&timer_hw->intr, 1u << gLed.timer_irq);
 
     if (gSystem.state == WAIT){
-        printf_usb("Alarm - WAIT\n");
         if (gLed.state){
             led_setup_red(&gLed); ///< Red led
             gLed.state = 0;
@@ -301,7 +291,6 @@ void led_timer_handler(void)
         if (gGps.valid == 1) {
             gSystem.state = READY; ///< The system is ready to measure
             led_setup_green(&gLed); ///< Green led
-            printf_usb("READY\n");
         }
     }
     else if (gSystem.state == DONE || gSystem.state == ERROR){
@@ -309,7 +298,8 @@ void led_timer_handler(void)
         lcd_disable(&gLcd);
         mphone_disable(&gMphone);
         gps_disable(&gGps);
-        // irq_set_enabled(gLed.timer_irq, false); ///< Disable the led timer
+        irq_set_enabled(gLed.timer_irq, false); ///< Disable the led timer
+        irq_set_enabled(TIMER_IRQ_1, false); ///< Disable the lcd refresh timer
         gSystem.state = DORMANT; ///< The system is going to DORMANT state
     }
 

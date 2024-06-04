@@ -214,6 +214,8 @@ static inline void lcd_enable(lcd_t *lcd)
  */
 static inline void lcd_disable(lcd_t *lcd)
 {
+    lcd->en = false;
+    lcd->pos_secuence = 0;
     gpio_put(lcd->en_gpio, 0);
 }
 
