@@ -24,6 +24,7 @@ void gps_init(gps_t *gps, uart_inst_t *uart, uint8_t rx, uint8_t tx, uint32_t ba
     gpio_set_function(gps->rx, GPIO_FUNC_UART);
 
     // Enable the GPS
+    gps->en_gpio = en_gpio;
     gpio_init(en_gpio);
     gpio_set_dir(en_gpio, GPIO_OUT);
     gpio_put(en_gpio, 0);
