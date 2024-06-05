@@ -25,17 +25,25 @@ void mphone_init(mphone_t *mphone, uint8_t gpio_num, uint32_t sample, uint8_t en
     mphone->en = false;
     mphone->dma_irq = 0;
     mphone->adc_chan = 26 - gpio_num; ///< channel 0 is GPIO 26, channel 1 is GPIO 27, etc.
-    mphone->sample = sample;
+    mphone->sample = sample/7;
 
     ///< Initialize the GPIO
     gpio_init(en_gpio);
     gpio_set_dir(en_gpio, GPIO_OUT);
     gpio_put(en_gpio, 0); ///< active high
 
+    mphone_configure_dma(mphone);
+
+    ///< Print and load the SPL values
+    mphone_load_print_spl_location(mphone);
+}
+
+void mphone_configure_dma(mphone_t *mphone)
+{
     ///< Initialize the ADC
-    adc_gpio_init(gpio_num);
+    adc_gpio_init(mphone->gpio_num);
     adc_init();
-    adc_set_clkdiv(6.5*MHZ/sample); ///< Set the ADC clock to the sample rate
+    adc_set_clkdiv(6.5*MHZ/(mphone->sample)); ///< Set the ADC clock to the sample rate
     adc_select_input(mphone->adc_chan); ///< Select the ADC channel
     adc_fifo_setup(
         true,   ///< Write each completed conversion to the sample FIFO
@@ -68,22 +76,23 @@ void mphone_init(mphone_t *mphone, uint8_t gpio_num, uint32_t sample, uint8_t en
     ///< Enable the interrupt in the NVIC
     irq_set_exclusive_handler(DMA_IRQ_0, dma_handler);
     irq_set_enabled(DMA_IRQ_0, true);
-
-    ///< Print and load the SPL values
-    mphone_load_print_spl_location(mphone);
 }
 
 void mphone_calculate_spl(mphone_t *mphone)
 {
     uint32_t sum = 0;
-    for (uint8_t i = 0; i < MPHONE_SIZE_BUFFER; i++)
-    {
+    for (int i = 0; i < MPHONE_SIZE_BUFFER; i++){
         sum += mphone->adc_buffer[i];
     }
-    double avg = sum/MPHONE_SIZE_BUFFER;
-    mphone->spl[mphone->spl_index] = 20*pow(log10(sum/REF_PRESSURE), 2);
+    ///< 3.3V is the reference voltage, 4096 is the ADC resolution
+    double avg = (sum/MPHONE_SIZE_BUFFER)*(3.3/4096)*(0.046023); ///< 0.046 is the gain of the microphone
+    mphone->spl[mphone->spl_index] = 20*log10(avg/REF_PRESSURE);
     mphone->lat[mphone->spl_index] = mphone->lat_v;
     mphone->lon[mphone->spl_index] = mphone->lon_v;
+    mphone->spl_index++;
+    if (mphone->spl_index == MPHONE_SIZE_SPL) {
+        mphone->spl_index = 0;
+    }
 }
 
 void mphone_store_spl_location(mphone_t *mphone)
@@ -92,10 +101,10 @@ void mphone_store_spl_location(mphone_t *mphone)
     uint32_t buf[3*FLASH_PAGE_SIZE/sizeof(uint32_t)]; ///< The spl array sizes 200 bytes.
 
     // Copy the database into the buffer
-    for (int i = 0; i < MPHONE_SIZE_SPL;){
-        buf[i] = mphone->spl[i]; i++; ///< Casting? (uint32_t)
-        buf[i] = mphone->lat[i]; i++;
-        buf[i] = mphone->lon[i]; i++;
+    for (int i = 0; i < 3*MPHONE_SIZE_SPL; i += 3){
+        buf[i + 0] = (int32_t)(mphone->spl[i/3]*1000000);
+        buf[i + 1] = (int32_t)(mphone->lat[i/3]*1000000);
+        buf[i + 2] = (int32_t)(mphone->lon[i/3]*1000000);
     }
     // Program buf[] into the first page of this sector
     // Each page is 256 bytes, and each sector is 4K bytes
@@ -114,11 +123,11 @@ void mphone_load_print_spl_location(mphone_t *mphone)
     uint32_t *ptr = (uint32_t *)addr; ///< Place an int pointer at our memory-mapped address
 
     // Load the inventory from the flash memory
-    // printf("SPL, Latitude, Longitude\n");
-    // for (int i = 0; i < 3*MPHONE_SIZE_SPL;){///< Casting? (uint32_t)
-    //     mphone->spl[i] = ptr[i]; printf("%f, ", mphone->spl[i]); i++;
-    //     mphone->lat[i] = ptr[i]; printf("%f, ", mphone->lat[i]); i++;
-    //     mphone->lon[i] = ptr[i]; printf("%f\n", mphone->lon[i]); i++;
-    // }
-    // printf("End Mphone\n");
+    printf("SPL, Latitude, Longitude\n");
+    for (int i = 0, j = 0, w = 0; i < 3*MPHONE_SIZE_SPL; i += 3){///< Casting? (uint32_t)
+        mphone->spl[i/3] = (double_t)((int32_t)ptr[i + 0])/1000000; printf("%fdB, ", mphone->spl[i/3]);
+        mphone->lat[i/3] = (double_t)((int32_t)ptr[i + 1])/1000000; printf("%f, ", mphone->lat[i/3]);
+        mphone->lon[i/3] = (double_t)((int32_t)ptr[i + 2])/1000000; printf("%f\n", mphone->lon[i/3]);
+    }
+    printf("\n");
 }

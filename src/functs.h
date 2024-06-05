@@ -36,6 +36,7 @@ typedef union{
  */
 typedef struct _system_t{
     enum{
+        NONE,      ///< No state
         DORMANT,    ///< The system is not doing anything (no led)
         WAIT,       ///< The system is waiting for the GPS to hook (red led blinking)
         READY,      ///< GPS is hooked and the system is ready to measure (green led)

@@ -23,7 +23,7 @@
 #include "hardware/sync.h"
 #include "pico/flash.h"
 
-#define MPHONE_SIZE_BUFFER 5120 ///< Size of the ADC buffer.
+#define MPHONE_SIZE_BUFFER 25600 ///< Size of the ADC buffer.
 #define MPHONE_SIZE_SPL 50 ///< Size of the Sound Pressure Level array.
 #define MPHONE_SAMPLES_PER_PLACE 10 ///< Number of samples to calculate the SPL in one place.
 #define FLASH_TARGET_OFFSET (PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE) ///< Flash-based address of the last sector
@@ -63,6 +63,13 @@ typedef struct _mphone_t{
  * @param sample sample rate in Hz for the ADC.
  */
 void mphone_init(mphone_t *mphone, uint8_t gpio_num, uint32_t sample, uint8_t en_gpio);
+
+/**
+ * @brief Configure the DMA to transfer the data from the ADC to the buffer.
+ * 
+ * @param mphone 
+ */
+void mphone_configure_dma(mphone_t *mphone);
 
 /**
  * @brief Trigger the DMA to start the data transfer.
