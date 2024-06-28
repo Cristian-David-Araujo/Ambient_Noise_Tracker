@@ -16,7 +16,8 @@ Features
 *   **Energy Efficiency:** Implements low power consumption modes to extend battery life.
 
 The image below allows you to see which modules are part of the system:
-![Block Diagram](Block_Diagram.jpg)
+
+![Block_Diagram](https://github.com/Cristian-David-Araujo/Ambient_Noise_Tracker/assets/80019104/570b72ab-a39d-4feb-ad1f-7473c62287c0)
 
 Hardware Components
 -------------------
@@ -34,7 +35,8 @@ Hardware Components
 *   **Transistors:** Used as switches to manage power to the modules.
 
 The simplified schematics: 
-![alt text](Schematics.jpg)
+![Schematics](https://github.com/Cristian-David-Araujo/Ambient_Noise_Tracker/assets/80019104/b097332b-e438-42cd-a746-7b7dba1ac592)
+
 
 Software Design
 ---------------
@@ -67,7 +69,7 @@ Results
 
 The next image sumarize the data adquisition in each location:
 
-![Data Visualization](Noise_Data_dB.png)
+![Noise_Data_dB](https://github.com/Cristian-David-Araujo/Ambient_Noise_Tracker/assets/80019104/51eb42d0-e5cc-481a-b8f7-1c17158efc41)
 
 Installation
 ------------
